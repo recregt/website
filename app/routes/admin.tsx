@@ -115,13 +115,17 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
             {
               value: 'countries',
               label: 'Countries',
-              content: <Ranked rows={stats.audience.countries} />,
+              content: <Ranked rows={stats.audience.countries.slice(0, 7)} />,
             },
-            { value: 'cities', label: 'Cities', content: <Ranked rows={stats.audience.cities} /> },
+            {
+              value: 'cities',
+              label: 'Cities',
+              content: <Ranked rows={stats.audience.cities.slice(0, 7)} />,
+            },
             {
               value: 'languages',
               label: 'Languages',
-              content: <Ranked rows={stats.audience.languages} />,
+              content: <Ranked rows={stats.audience.languages.slice(0, 7)} />,
             },
           ]}
         />
@@ -132,22 +136,22 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
             {
               value: 'browsers',
               label: 'Browsers',
-              content: <Ranked rows={stats.technology.browsers} />,
+              content: <Ranked rows={stats.technology.browsers.slice(0, 7)} />,
             },
             {
               value: 'systems',
               label: 'Operating systems',
-              content: <Ranked rows={stats.technology.systems} />,
+              content: <Ranked rows={stats.technology.systems.slice(0, 7)} />,
             },
             {
               value: 'devices',
               label: 'Devices',
-              content: <Ranked rows={stats.technology.devices} />,
+              content: <Ranked rows={stats.technology.devices.slice(0, 7)} />,
             },
             {
               value: 'screens',
               label: 'Screens',
-              content: <Ranked rows={stats.technology.screens} />,
+              content: <Ranked rows={stats.technology.screens.slice(0, 7)} />,
             },
           ]}
         />
@@ -268,7 +272,11 @@ function TabsCard({
         </CardHeader>
         <CardContent className="p-4 pt-0">
           {tabs.map((tab) => (
-            <TabsContent key={tab.value} value={tab.value}>
+            <TabsContent
+              key={tab.value}
+              value={tab.value}
+              className="flex h-[340px] flex-col overflow-y-auto"
+            >
               {tab.content}
             </TabsContent>
           ))}
