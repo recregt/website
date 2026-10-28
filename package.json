@@ -12,6 +12,8 @@
     "db:migrate": "wrangler d1 migrations apply DB --local",
     "build": "react-router build",
     "release": "wrangler d1 migrations apply DB --remote && wrangler deploy",
+    "studio:build": "pnpm --filter studio build",
+    "studio:release": "wrangler deploy -c studio/wrangler.jsonc",
     "check": "wrangler types && react-router typegen && tsc && tsc -p studio && biome ci ."
   },
   "dependencies": {
