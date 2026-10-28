@@ -99,7 +99,7 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         <SectionCard title="Top pages">
           <Ranked rows={stats.content.pages} />
         </SectionCard>
@@ -257,12 +257,12 @@ function MiniVital({ label, value }: { label: string; value: string }) {
 
 function SectionCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Card className="flex h-full flex-col">
+    <Card>
       <CardHeader className="p-4 pb-3">
         <CardTitle className="font-sans text-sm">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col p-4 pt-0">
-        <div className="flex flex-1 flex-col space-y-6">{children}</div>
+      <CardContent className="p-4 pt-0">
+        <div className="space-y-6">{children}</div>
       </CardContent>
     </Card>
   )
@@ -282,12 +282,12 @@ function TabsCard({
       <Tabs defaultValue={defaultValue} className="gap-0">
         <CardHeader className="p-4 pb-3">
           <CardTitle className="font-sans text-sm">{title}</CardTitle>
-          <TabsList className="mt-2 h-8 rounded-md bg-[#1f2023] p-1">
+          <TabsList variant="line" className="mt-2 h-7">
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="font-mono text-xs font-medium data-active:bg-[#26272b] data-active:text-zinc-100 data-active:shadow-sm"
+                className="font-mono text-xs font-normal"
               >
                 {tab.label}
               </TabsTrigger>
@@ -299,7 +299,7 @@ function TabsCard({
             <TabsContent
               key={tab.value}
               value={tab.value}
-              className="flex min-h-[260px] flex-col overflow-y-auto"
+              className="flex h-[340px] flex-col overflow-y-auto"
             >
               {tab.content}
             </TabsContent>
