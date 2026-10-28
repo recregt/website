@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { requireAdmin } from '../../server/session.server'
 import { analyticsConfigured, siteStats } from '../../server/stats.server'
 import { parseRange, ranges } from '../admin/ranges'
-import { Ranked, Recent, Totals, Vitals } from '../admin/tables'
+import { Ranked, Recent, Totals, table, Vitals } from '../admin/tables'
 import type { Route } from './+types/admin'
 
 export const meta: Route.MetaFunction = () => [
@@ -38,7 +38,7 @@ export default function Admin({ loaderData: { range, stats } }: Route.ComponentP
 
           <h2>Content</h2>
           <Ranked title="Pages" rows={stats.content.pages} />
-          <table>
+          <table {...table}>
             <caption>Reading</caption>
             <thead>
               <tr>
@@ -83,7 +83,7 @@ export default function Admin({ loaderData: { range, stats } }: Route.ComponentP
 
           <h2>Performance</h2>
           <Vitals vitals={stats.performance.vitals} />
-          <table>
+          <table {...table}>
             <caption>Slowest server responses</caption>
             <thead>
               <tr>

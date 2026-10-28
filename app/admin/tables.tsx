@@ -1,5 +1,7 @@
 import type { SiteStats } from '../../server/stats.server'
 
+export const table = { border: 1, cellPadding: 6, cellSpacing: 0 } as const
+
 export function Totals({ totals, daily }: Pick<SiteStats, 'totals' | 'daily'>) {
   return (
     <>
@@ -13,7 +15,7 @@ export function Totals({ totals, daily }: Pick<SiteStats, 'totals' | 'daily'>) {
         <dt>Bot requests</dt>
         <dd>{totals.bots}</dd>
       </dl>
-      <table>
+      <table {...table}>
         <caption>Per day</caption>
         <thead>
           <tr>
@@ -44,7 +46,7 @@ export function Ranked({
   rows: { name: string; count: number }[]
 }) {
   return (
-    <table>
+    <table {...table}>
       <caption>{title}</caption>
       <tbody>
         {rows.length === 0 ? (
@@ -67,7 +69,7 @@ export function Ranked({
 export function Vitals({ vitals }: { vitals: SiteStats['performance']['vitals'] }) {
   const ms = (value: number | null) => (value === null ? '—' : `${Math.round(value)} ms`)
   return (
-    <table>
+    <table {...table}>
       <caption>Web Vitals (75th percentile)</caption>
       <tbody>
         <tr>
@@ -97,7 +99,7 @@ export function Vitals({ vitals }: { vitals: SiteStats['performance']['vitals'] 
 
 export function Recent({ rows }: { rows: SiteStats['recent'] }) {
   return (
-    <table>
+    <table {...table}>
       <thead>
         <tr>
           <th>Time (UTC)</th>
