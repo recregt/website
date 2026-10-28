@@ -14,11 +14,14 @@ export default async function handleRequest(
   responseHeaders: Headers,
   routerContext: EntryContext,
 ) {
+  const nonce = createNonce()
+  responseHeaders.set('Content-Type', 'text/html')
+  for (const [name, value] of securityHeaders(nonce)) responseHeaders.set(name, value)
+
   if (request.method.toUpperCase() === 'HEAD') {
     return new Response(null, { status: responseStatusCode, headers: responseHeaders })
   }
 
-  const nonce = createNonce()
   let shellRendered = false
   const body = await renderToReadableStream(
     <ServerRouter context={routerContext} url={request.url} nonce={nonce} />,
@@ -36,8 +39,6 @@ export default async function handleRequest(
   const userAgent = request.headers.get('user-agent')
   if ((userAgent && isbot(userAgent)) || routerContext.isSpaMode) await body.allReady
 
-  responseHeaders.set('Content-Type', 'text/html')
-  for (const [name, value] of securityHeaders(nonce)) responseHeaders.set(name, value)
   return new Response(body, { headers: responseHeaders, status: responseStatusCode })
 }
 
