@@ -24,9 +24,9 @@ export function TrafficChart({
       points.map((point) => point.visitors),
     ]
     const axis: uPlot.Axis = {
-      stroke: 'rgba(255, 255, 255, 0.08)',
-      grid: { stroke: 'rgba(255, 255, 255, 0.05)', width: 1 },
-      ticks: { stroke: 'rgba(255, 255, 255, 0.45)', width: 1 },
+      stroke: 'rgba(255, 255, 255, 0.1)',
+      grid: { stroke: 'rgba(255, 255, 255, 0.04)', width: 1 },
+      ticks: { stroke: 'rgba(255, 255, 255, 0.62)', width: 1 },
       font: axisFont,
       size: 44,
     }

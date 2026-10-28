@@ -21,12 +21,12 @@ import type { User } from '../../server/schema.server'
 export function AppSidebar({ user }: { user: User }) {
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader className="border-b border-sidebar-border">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link to="/">
-                <span className="font-mono text-base tracking-tight">recregt</span>
+                <span className="font-mono text-sm tracking-tight">recregt</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -34,7 +34,9 @@ export function AppSidebar({ user }: { user: User }) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
+          <SidebarGroupLabel className="font-mono text-[11px] tracking-widest uppercase">
+            Platform
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -67,7 +69,7 @@ export function AppSidebar({ user }: { user: User }) {
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center justify-between px-2">
-              <p className="font-mono text-xs text-sidebar-foreground/70">@{user.handle}</p>
+              <p className="font-mono text-xs text-sidebar-foreground/80">@{user.handle}</p>
               <Badge variant="outline" className="font-mono text-[10px] tracking-wider uppercase">
                 admin
               </Badge>

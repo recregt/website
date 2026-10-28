@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import { Checkbox } from '~/components/ui/checkbox'
-import { Table, TableBody, TableCaption, TableCell, TableRow } from '~/components/ui/table'
+import { Table, TableBody, TableCell, TableRow } from '~/components/ui/table'
 
 import type { SiteStats } from '../../server/stats.server'
 import { columnHelper, DataTable } from './data-table'
@@ -13,7 +13,10 @@ type SlowRow = SiteStats['performance']['slowest'][number]
 
 const ranked = columnHelper<RankedRow>()
 const rankedColumns = ranked.columns([
-  ranked.accessor('name', { header: 'Name' }),
+  ranked.accessor('name', {
+    header: 'Name',
+    cell: (info) => <span className="block max-w-64 truncate">{info.getValue()}</span>,
+  }),
   ranked.accessor('count', {
     header: 'Count',
     cell: (info) => (
@@ -33,7 +36,10 @@ const recentColumns = recent.columns([
     cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
   }),
   recent.accessor('kind', { header: 'Kind' }),
-  recent.accessor('path', { header: 'Path' }),
+  recent.accessor('path', {
+    header: 'Path',
+    cell: (info) => <span className="block max-w-72 truncate">{info.getValue()}</span>,
+  }),
   recent.accessor('status', { header: 'Status' }),
   recent.accessor('handle', {
     header: 'User',
@@ -46,18 +52,29 @@ const recentColumns = recent.columns([
   recent.accessor((row) => [row.city, row.country].filter(Boolean).join(', '), {
     id: 'location',
     header: 'Location',
+    cell: (info) => <span className="block max-w-44 truncate">{info.getValue()}</span>,
   }),
-  recent.accessor('network', { header: 'Network' }),
+  recent.accessor('network', {
+    header: 'Network',
+    cell: (info) => <span className="block max-w-44 truncate">{info.getValue()}</span>,
+  }),
   recent.accessor((row) => `${row.browser} · ${row.os} · ${row.device}`, {
     id: 'client',
     header: 'Client',
+    cell: (info) => <span className="block max-w-56 truncate">{info.getValue()}</span>,
   }),
-  recent.accessor('referrer', { header: 'Referrer' }),
+  recent.accessor('referrer', {
+    header: 'Referrer',
+    cell: (info) => <span className="block max-w-56 truncate">{info.getValue()}</span>,
+  }),
 ])
 
 const reading = columnHelper<ReadingRow>()
 const readingColumns = reading.columns([
-  reading.accessor('name', { header: 'Page' }),
+  reading.accessor('name', {
+    header: 'Page',
+    cell: (info) => <span className="block max-w-64 truncate">{info.getValue()}</span>,
+  }),
   reading.accessor('views', { header: 'Views' }),
   reading.accessor('visibleMs', {
     header: 'Avg. visible',
@@ -71,31 +88,28 @@ const readingColumns = reading.columns([
 
 const slow = columnHelper<SlowRow>()
 const slowColumns = slow.columns([
-  slow.accessor('name', { header: 'Path' }),
+  slow.accessor('name', {
+    header: 'Path',
+    cell: (info) => <span className="block max-w-72 truncate">{info.getValue()}</span>,
+  }),
   slow.accessor('ms', { header: 'Avg.', cell: (info) => `${Math.round(info.getValue())} ms` }),
   slow.accessor('count', { header: 'Requests' }),
 ])
 
 export function Reading({ rows }: { rows: ReadingRow[] }) {
-  return <DataTable caption="Reading" columns={readingColumns} data={rows} />
+  return <DataTable columns={readingColumns} data={rows} />
 }
 
 export function Slowest({ rows }: { rows: SlowRow[] }) {
-  return <DataTable caption="Slowest server responses" columns={slowColumns} data={rows} />
+  return <DataTable columns={slowColumns} data={rows} />
 }
 
-export function Ranked({
-  title,
-  rows,
-}: {
-  title: string
-  rows: { name: string; count: number }[]
-}) {
+export function Ranked({ rows }: { rows: { name: string; count: number }[] }) {
   const data = useMemo(() => {
     const total = rows.reduce((sum, row) => sum + row.count, 0)
     return rows.map((row) => ({ ...row, share: total ? row.count / total : 0 }))
   }, [rows])
-  return <DataTable caption={title} columns={rankedColumns} data={data} />
+  return <DataTable columns={rankedColumns} data={data} />
 }
 
 export function Recent({ rows }: { rows: RecentRow[] }) {
@@ -127,12 +141,11 @@ export function Vitals({ vitals }: { vitals: SiteStats['performance']['vitals'] 
   ]
   return (
     <Table>
-      <TableCaption>Web Vitals (75th percentile)</TableCaption>
       <TableBody>
         {rows.map(([name, value]) => (
           <TableRow key={name}>
             <TableCell className="font-medium">{name}</TableCell>
-            <TableCell className="text-right tabular-nums">{value}</TableCell>
+            <TableCell className="text-right font-mono tabular-nums">{value}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -143,11 +156,14 @@ export function Vitals({ vitals }: { vitals: SiteStats['performance']['vitals'] 
 function Bar({ value, max }: { value: number; max: number }) {
   const share = Math.max(0, Math.min(1, value / max))
   return (
-    <div className="flex items-center gap-2">
-      <div className="h-1 w-24 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-ring" style={{ width: `${share * 100}%` }} />
+    <div className="flex items-center gap-2.5">
+      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-foreground/10">
+        <div
+          className="h-full rounded-full bg-ring transition-[width] duration-300"
+          style={{ width: `${share * 100}%` }}
+        />
       </div>
-      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+      <span className="w-10 text-right font-mono text-xs tabular-nums text-foreground/70">
         {Math.round(share * 100)}%
       </span>
     </div>

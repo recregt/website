@@ -41,7 +41,7 @@ export default function Admin({ loaderData: { range, stats, user } }: Route.Comp
     <SidebarProvider>
       <AppSidebar user={user} />
       <SidebarInset>
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-1 h-4!" />
           <Breadcrumb>
@@ -58,7 +58,7 @@ export default function Admin({ loaderData: { range, stats, user } }: Route.Comp
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        <div className="admin-dark flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col">
           <div
             aria-busy={loading}
             className={cn(
@@ -71,7 +71,7 @@ export default function Admin({ loaderData: { range, stats, user } }: Route.Comp
                 <p className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
                   Analytics
                 </p>
-                <h1 className="font-heading text-3xl font-semibold tracking-tight">Dashboard</h1>
+                <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
               </div>
               <RangeTabs range={range} />
             </div>
@@ -108,8 +108,8 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <CardTitle>Traffic</CardTitle>
-            <span className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+            <CardTitle className="font-sans">Traffic</CardTitle>
+            <span className="flex items-center gap-1.5 font-mono text-[11px] text-foreground/70">
               <span
                 className="size-2 rounded-full"
                 style={{ backgroundColor: seriesColors.views }}
@@ -129,45 +129,69 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
         </CardContent>
       </Card>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        <SectionCard title="Content">
-          <Ranked title="Pages" rows={stats.content.pages} />
+      <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <MetricCard title="Pages">
+          <Ranked rows={stats.content.pages} />
+        </MetricCard>
+        <MetricCard title="Reading">
           <Reading rows={stats.content.reading} />
-          <Ranked title="Not found (404)" rows={stats.content.notFound} />
-        </SectionCard>
-
-        <SectionCard title="Sources">
-          <Ranked title="Referrers" rows={stats.sources.referrers} />
-          <Ranked title="Campaigns" rows={stats.sources.campaigns} />
-        </SectionCard>
-
-        <SectionCard title="Audience">
-          <Ranked title="Countries" rows={stats.audience.countries} />
-          <Ranked title="Cities" rows={stats.audience.cities} />
-          <Ranked title="Networks" rows={stats.audience.networks} />
-          <Ranked title="Languages" rows={stats.audience.languages} />
-          <Ranked title="Timezones" rows={stats.audience.timezones} />
-        </SectionCard>
-
-        <SectionCard title="Technology">
-          <Ranked title="Browsers" rows={stats.technology.browsers} />
-          <Ranked title="Operating systems" rows={stats.technology.systems} />
-          <Ranked title="Devices" rows={stats.technology.devices} />
-          <Ranked title="GPUs" rows={stats.technology.gpus} />
-          <Ranked title="Screens" rows={stats.technology.screens} />
-          <Ranked title="Color scheme" rows={stats.technology.colorSchemes} />
-          <Ranked title="Connection" rows={stats.technology.connections} />
-        </SectionCard>
+        </MetricCard>
+        <MetricCard title="Not found (404)">
+          <Ranked rows={stats.content.notFound} />
+        </MetricCard>
+        <MetricCard title="Referrers">
+          <Ranked rows={stats.sources.referrers} />
+        </MetricCard>
+        <MetricCard title="Campaigns">
+          <Ranked rows={stats.sources.campaigns} />
+        </MetricCard>
+        <MetricCard title="Countries">
+          <Ranked rows={stats.audience.countries} />
+        </MetricCard>
+        <MetricCard title="Cities">
+          <Ranked rows={stats.audience.cities} />
+        </MetricCard>
+        <MetricCard title="Networks">
+          <Ranked rows={stats.audience.networks} />
+        </MetricCard>
+        <MetricCard title="Languages">
+          <Ranked rows={stats.audience.languages} />
+        </MetricCard>
+        <MetricCard title="Timezones">
+          <Ranked rows={stats.audience.timezones} />
+        </MetricCard>
+        <MetricCard title="Browsers">
+          <Ranked rows={stats.technology.browsers} />
+        </MetricCard>
+        <MetricCard title="Operating systems">
+          <Ranked rows={stats.technology.systems} />
+        </MetricCard>
+        <MetricCard title="Devices">
+          <Ranked rows={stats.technology.devices} />
+        </MetricCard>
+        <MetricCard title="GPUs">
+          <Ranked rows={stats.technology.gpus} />
+        </MetricCard>
+        <MetricCard title="Screens">
+          <Ranked rows={stats.technology.screens} />
+        </MetricCard>
+        <MetricCard title="Color scheme">
+          <Ranked rows={stats.technology.colorSchemes} />
+        </MetricCard>
+        <MetricCard title="Connection">
+          <Ranked rows={stats.technology.connections} />
+        </MetricCard>
+        <MetricCard title="Web vitals" description="75th percentile">
+          <Vitals vitals={stats.performance.vitals} />
+        </MetricCard>
+        <MetricCard title="Slowest responses">
+          <Slowest rows={stats.performance.slowest} />
+        </MetricCard>
       </div>
-
-      <SectionCard title="Performance">
-        <Vitals vitals={stats.performance.vitals} />
-        <Slowest rows={stats.performance.slowest} />
-      </SectionCard>
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent requests</CardTitle>
+          <CardTitle className="font-sans">Recent requests</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <Recent rows={stats.recent} />
@@ -228,13 +252,22 @@ function Trend({ value }: { value: number | null }) {
   )
 }
 
-function SectionCard({ title, children }: { title: string; children: ReactNode }) {
+function MetricCard({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: string
+  children: ReactNode
+}) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle className="font-sans text-sm">{title}</CardTitle>
+        {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
-      <CardContent className="space-y-6">{children}</CardContent>
+      <CardContent className="pt-0">{children}</CardContent>
     </Card>
   )
 }
@@ -251,7 +284,7 @@ function RangeTabs({ range }: { range: Range }) {
             'rounded-md px-2.5 py-1 font-mono text-xs transition-colors',
             option === range
               ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground',
+              : 'text-foreground/60 hover:text-foreground',
           )}
         >
           {option}

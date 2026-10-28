@@ -12,7 +12,7 @@ import {
   tableFeatures,
   useTable,
 } from '@tanstack/react-table'
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Inbox } from 'lucide-react'
 import { useState } from 'react'
 
 import { Input } from '~/components/ui/input'
@@ -80,40 +80,39 @@ export function DataTable<Row extends RowData>({
           </span>
         </div>
       )}
-      <Table>
-        {caption && <TableCaption>{caption}</TableCaption>}
-        <TableHeader>
-          {table.getHeaderGroups().map((group) => (
-            <TableRow key={group.id}>
-              {group.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase"
-                >
-                  {header.isPlaceholder ? null : (
-                    <button
-                      type="button"
-                      onClick={header.column.getToggleSortingHandler()}
-                      className="inline-flex items-center gap-1 hover:text-foreground"
-                    >
-                      <table.FlexRender header={header} />
-                      <SortIcon direction={header.column.getIsSorted()} />
-                    </button>
-                  )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {rows.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="text-muted-foreground">
-                No data yet.
-              </TableCell>
-            </TableRow>
-          ) : (
-            rows.map((row) => (
+      {rows.length === 0 ? (
+        <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border/60 py-6">
+          <Inbox className="size-4 text-muted-foreground/60" />
+          <p className="font-mono text-xs text-muted-foreground">No data yet</p>
+        </div>
+      ) : (
+        <Table>
+          {caption && <TableCaption>{caption}</TableCaption>}
+          <TableHeader>
+            {table.getHeaderGroups().map((group) => (
+              <TableRow key={group.id}>
+                {group.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className="font-mono text-[11px] tracking-wider text-foreground/75 uppercase"
+                  >
+                    {header.isPlaceholder ? null : (
+                      <button
+                        type="button"
+                        onClick={header.column.getToggleSortingHandler()}
+                        className="inline-flex items-center gap-1 hover:text-foreground"
+                      >
+                        <table.FlexRender header={header} />
+                        <SortIcon direction={header.column.getIsSorted()} />
+                      </button>
+                    )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
               <TableRow key={row.id}>
                 {row.getAllCells().map((cell) => (
                   <TableCell key={cell.id}>
@@ -121,10 +120,10 @@ export function DataTable<Row extends RowData>({
                   </TableCell>
                 ))}
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableBody>
+        </Table>
+      )}
     </div>
   )
 }
