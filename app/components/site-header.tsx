@@ -43,7 +43,9 @@ export function SiteHeader({ user }: { user: User | null }) {
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/admin">Admin</Link>
+                      <Link to="/admin" className="cursor-pointer">
+                        Admin
+                      </Link>
                     </DropdownMenuItem>
                   </>
                 )}
@@ -52,7 +54,7 @@ export function SiteHeader({ user }: { user: User | null }) {
                   <Form method="post" action="/signout" className="w-full">
                     <button
                       type="submit"
-                      className="w-full px-2 py-1.5 text-left text-rose-400 hover:text-rose-300"
+                      className="w-full cursor-pointer px-2 py-1.5 text-left text-rose-400 hover:text-rose-300"
                     >
                       Sign out
                     </button>
