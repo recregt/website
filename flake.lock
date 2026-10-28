@@ -1,0 +1,49 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1793110635,
+        "narHash": "sha256-dhoW6VgFWlaodSY5jrBn+CF2FLmaUvDVgM7+C7T2+NM=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "31ecbaca1bdefa45dffc409f0250bd8039ea0010",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "parvus": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793017240,
+        "narHash": "sha256-w8UTJOIVhJk/5INYMnjZ0F9fvGjdRdQCMbdx6FF6ZsY=",
+        "owner": "recregt",
+        "repo": "parvus",
+        "rev": "efd2bbafdd341d04a4847d6bcbdedd9b40385050",
+        "type": "github"
+      },
+      "original": {
+        "owner": "recregt",
+        "ref": "v0.1.3",
+        "repo": "parvus",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "parvus": "parvus"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
