@@ -13,6 +13,7 @@ export default function Home({ loaderData: { user } }: Route.ComponentProps) {
   return (
     <main>
       <h1>recregt</h1>
+      <Link to="/blog">Blog</Link>
       {user ? (
         <Form method="post" action="/signout">
           <p>Signed in as @{user.handle}</p>

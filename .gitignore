@@ -1,7 +1,10 @@
-/node_modules
+node_modules
 /build
 /.react-router
 /.wrangler
 /.parvus
 /worker-configuration.d.ts
 .dev.vars
+/studio/dist
+/studio/.sanity
+/studio/schema.json

@@ -5,15 +5,21 @@
   "scripts": {
     "dev": "react-router dev",
     "parvus": "mkdir -p .parvus && set -a && . ./.dev.vars && parvus",
+    "studio": "pnpm --filter studio dev",
+    "typegen": "pnpm --filter studio typegen",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply DB --local",
     "build": "react-router build",
     "deploy": "react-router build && wrangler d1 migrations apply DB --remote && wrangler deploy",
-    "check": "wrangler types && react-router typegen && tsc && biome ci ."
+    "check": "wrangler types && react-router typegen && tsc && tsc -p studio && biome ci ."
   },
   "dependencies": {
     "@cloudflare/containers": "^0.3.7",
+    "@portabletext/react": "^8.0.1",
+    "@sanity/client": "^8.11.0",
+    "@sanity/image-url": "^2.1.1",
     "drizzle-orm": "^0.45.4",
+    "groq": "^6.20.0",
     "isbot": "^5.2.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
