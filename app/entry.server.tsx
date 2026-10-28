@@ -45,6 +45,7 @@ export default async function handleRequest(
 function securityHeaders(nonce: string): [string, string][] {
   const policy = [
     "default-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
     `script-src 'self' 'nonce-${nonce}' ${turnstile}`,
     `frame-src ${turnstile}`,
     `img-src 'self' ${sanityImages}`,
