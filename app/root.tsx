@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import {
   Form,
   isRouteErrorResponse,
@@ -10,6 +11,8 @@ import {
   useLoaderData,
   useLocation,
 } from 'react-router'
+
+import { TooltipProvider } from '~/components/ui/tooltip'
 
 import { sessionMiddleware, userContext } from '../server/session.server'
 import type { Route } from './+types/root'
@@ -26,8 +29,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { user } = useLoaderData<typeof loader>()
   const { pathname } = useLocation()
   const standalone = pathname.startsWith('/admin')
+
+  useEffect(() => {
+    const media = matchMedia('(prefers-color-scheme: dark)')
+    const sync = () =>
+      document.documentElement.classList.toggle('dark', standalone || media.matches)
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [standalone])
+
   return (
-    <html lang="en">
+    <html lang="en" className={standalone ? 'dark' : undefined}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -68,7 +81,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </nav>
           </header>
         )}
-        {children}
+        <TooltipProvider>{children}</TooltipProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

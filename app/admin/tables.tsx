@@ -14,16 +14,24 @@ type SlowRow = SiteStats['performance']['slowest'][number]
 const ranked = columnHelper<RankedRow>()
 const rankedColumns = ranked.columns([
   ranked.accessor('name', { header: 'Name' }),
-  ranked.accessor('count', { header: 'Count' }),
+  ranked.accessor('count', {
+    header: 'Count',
+    cell: (info) => (
+      <span className="font-mono tabular-nums">{info.getValue().toLocaleString()}</span>
+    ),
+  }),
   ranked.accessor('share', {
     header: 'Share',
-    cell: (info) => <meter value={info.getValue()} max={1} title={percent(info.getValue())} />,
+    cell: (info) => <Bar value={info.getValue()} max={1} />,
   }),
 ])
 
 const recent = columnHelper<RecentRow>()
 const recentColumns = recent.columns([
-  recent.accessor('timestamp', { header: 'Time (UTC)' }),
+  recent.accessor('timestamp', {
+    header: 'Time (UTC)',
+    cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+  }),
   recent.accessor('kind', { header: 'Kind' }),
   recent.accessor('path', { header: 'Path' }),
   recent.accessor('status', { header: 'Status' }),
@@ -31,7 +39,10 @@ const recentColumns = recent.columns([
     header: 'User',
     cell: (info) => info.getValue() && `@${info.getValue()}`,
   }),
-  recent.accessor('ip', { header: 'IP' }),
+  recent.accessor('ip', {
+    header: 'IP',
+    cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
+  }),
   recent.accessor((row) => [row.city, row.country].filter(Boolean).join(', '), {
     id: 'location',
     header: 'Location',
@@ -54,9 +65,7 @@ const readingColumns = reading.columns([
   }),
   reading.accessor('scrollDepth', {
     header: 'Avg. scroll',
-    cell: (info) => (
-      <meter value={info.getValue()} max={100} title={`${Math.round(info.getValue())}%`} />
-    ),
+    cell: (info) => <Bar value={info.getValue()} max={100} />,
   }),
 ])
 
@@ -131,6 +140,16 @@ export function Vitals({ vitals }: { vitals: SiteStats['performance']['vitals'] 
   )
 }
 
-function percent(share: number): string {
-  return `${Math.round(share * 100)}%`
+function Bar({ value, max }: { value: number; max: number }) {
+  const share = Math.max(0, Math.min(1, value / max))
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1 w-24 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-ring" style={{ width: `${share * 100}%` }} />
+      </div>
+      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+        {Math.round(share * 100)}%
+      </span>
+    </div>
+  )
 }

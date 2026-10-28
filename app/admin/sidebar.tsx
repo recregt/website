@@ -1,6 +1,7 @@
 import { BookOpen, Home, LayoutDashboard, LogOut } from 'lucide-react'
 import { Form, Link } from 'react-router'
 
+import { Badge } from '~/components/ui/badge'
 import {
   Sidebar,
   SidebarContent,
@@ -65,7 +66,12 @@ export function AppSidebar({ user }: { user: User }) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <p className="px-2 font-mono text-xs text-sidebar-foreground/70">@{user.handle}</p>
+            <div className="flex items-center justify-between px-2">
+              <p className="font-mono text-xs text-sidebar-foreground/70">@{user.handle}</p>
+              <Badge variant="outline" className="font-mono text-[10px] tracking-wider uppercase">
+                admin
+              </Badge>
+            </div>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <Form method="post" action="/signout">
