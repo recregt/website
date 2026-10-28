@@ -17,7 +17,9 @@ const postQuery = defineQuery(`
   }
 `)
 
-export async function listPosts() {
+export type PostSummary = { slug: string; title: string; summary: string; publishedAt: Date }
+
+export async function listPosts(): Promise<PostSummary[]> {
   const posts = await sanity.fetch(postsQuery)
   return posts.map((post) => ({
     slug: published(post.slug, 'slug'),

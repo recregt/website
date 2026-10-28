@@ -1,6 +1,10 @@
 import { useRef, useState } from 'react'
 import { redirect, useNavigate } from 'react-router'
 
+import { Button } from '~/components/ui/button'
+import { Card, CardContent } from '~/components/ui/card'
+import { Input } from '~/components/ui/input'
+
 import { userContext } from '../../server/session.server'
 import { turnstileSiteKey } from '../../server/turnstile.server'
 import { login, register } from '../auth/passkeys'
@@ -65,49 +69,72 @@ export default function SignIn({ loaderData: { siteKey } }: Route.ComponentProps
 
   if (recovery) {
     return (
-      <main>
-        <h1>Save your recovery code</h1>
-        <p>It is the only way back in if you lose every device with your passkey.</p>
-        <pre>{recovery.code}</pre>
-        {recovery.signedIn ? (
-          <button type="button" onClick={() => navigate('/')}>
-            I saved it, continue
-          </button>
-        ) : (
-          <button type="button" disabled={busy} onClick={signIn}>
-            I saved it, sign me in
-          </button>
+      <main className="mx-auto max-w-md px-6 py-20">
+        <h1 className="font-heading text-3xl font-semibold tracking-tight">
+          Save your recovery code
+        </h1>
+        <p className="mt-3 text-muted-foreground">
+          It is the only way back in if you lose every device with your passkey.
+        </p>
+        <pre className="mt-6 overflow-x-auto rounded-lg border border-border bg-muted p-4 font-mono text-sm">
+          {recovery.code}
+        </pre>
+        <Button
+          className="mt-6"
+          disabled={busy}
+          onClick={recovery.signedIn ? () => navigate('/') : signIn}
+        >
+          {recovery.signedIn ? 'I saved it, continue' : 'I saved it, sign me in'}
+        </Button>
+        {message && (
+          <p role="alert" className="mt-4 text-sm text-destructive">
+            {message}
+          </p>
         )}
-        {message && <p role="alert">{message}</p>}
       </main>
     )
   }
 
   return (
-    <main>
-      <h1>Sign in</h1>
-      <button type="button" disabled={busy} onClick={signIn}>
-        Sign in with a passkey
-      </button>
-
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          if (human.token)
-            signUp(String(new FormData(event.currentTarget).get('handle')), human.token)
-        }}
-      >
-        <h2>New here?</h2>
-        <label>
-          Handle <input name="handle" required autoComplete="username" />
-        </label>
-        <div ref={challenge} />
-        <button type="submit" disabled={busy || !human.token}>
-          Create an account
-        </button>
-      </form>
-
-      {message && <p role="alert">{message}</p>}
+    <main className="mx-auto max-w-md px-6 py-20">
+      <h1 className="font-heading text-3xl font-semibold tracking-tight">Sign in</h1>
+      <Card className="mt-6">
+        <CardContent className="space-y-4">
+          <Button className="w-full" disabled={busy} onClick={signIn}>
+            Sign in with a passkey
+          </Button>
+          <form
+            className="space-y-3 border-t border-border pt-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (human.token)
+                signUp(String(new FormData(event.currentTarget).get('handle')), human.token)
+            }}
+          >
+            <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">
+              New here?
+            </p>
+            <label htmlFor="handle" className="block space-y-1.5 text-sm">
+              Handle
+              <Input id="handle" name="handle" required autoComplete="username" />
+            </label>
+            <div ref={challenge} />
+            <Button
+              type="submit"
+              variant="secondary"
+              className="w-full"
+              disabled={busy || !human.token}
+            >
+              Create an account
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+      {message && (
+        <p role="alert" className="mt-4 text-sm text-destructive">
+          {message}
+        </p>
+      )}
     </main>
   )
 }

@@ -1,5 +1,16 @@
 import { useMemo, useState } from 'react'
 
+import { Checkbox } from '~/components/ui/checkbox'
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '~/components/ui/table'
+
 import type { SiteStats } from '../../server/stats.server'
 import { columnHelper, DataTable } from './data-table'
 
@@ -73,31 +84,33 @@ export function Slowest({ rows }: { rows: SlowRow[] }) {
 }
 
 export function Totals({ totals }: Pick<SiteStats, 'totals'>) {
+  const cells = [
+    ['Views', totals.views],
+    ['Visitors', totals.visitors],
+    ['Signed-in views', totals.signedIn],
+    ['Bot requests', totals.bots],
+  ] as const
   return (
-    <table border={1} cellPadding={8} cellSpacing={0}>
-      <tbody>
-        <tr>
-          <th>Views</th>
-          <th>Visitors</th>
-          <th>Signed-in views</th>
-          <th>Bot requests</th>
-        </tr>
-        <tr>
-          <td align="center">
-            <big>{totals.views}</big>
-          </td>
-          <td align="center">
-            <big>{totals.visitors}</big>
-          </td>
-          <td align="center">
-            <big>{totals.signedIn}</big>
-          </td>
-          <td align="center">
-            <big>{totals.bots}</big>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          {cells.map(([label]) => (
+            <TableHead key={label} className="text-center">
+              {label}
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow>
+          {cells.map(([label, value]) => (
+            <TableCell key={label} className="text-center text-lg font-semibold">
+              {value}
+            </TableCell>
+          ))}
+        </TableRow>
+      </TableBody>
+    </Table>
   )
 }
 
@@ -119,19 +132,17 @@ export function Recent({ rows }: { rows: RecentRow[] }) {
   const [hideBots, setHideBots] = useState(true)
   const data = useMemo(() => (hideBots ? rows.filter((row) => !row.bot) : rows), [rows, hideBots])
   return (
-    <>
-      <p>
-        <label>
-          <input
-            type="checkbox"
-            checked={hideBots}
-            onChange={(event) => setHideBots(event.target.checked)}
-          />{' '}
-          Hide bots
-        </label>
-      </p>
+    <div className="space-y-3">
+      <label htmlFor="hide-bots" className="flex items-center gap-2 text-sm">
+        <Checkbox
+          id="hide-bots"
+          checked={hideBots}
+          onCheckedChange={(checked) => setHideBots(checked === true)}
+        />
+        Hide bots
+      </label>
       <DataTable columns={recentColumns} data={data} searchable />
-    </>
+    </div>
   )
 }
 
@@ -145,17 +156,17 @@ export function Vitals({ vitals }: { vitals: SiteStats['performance']['vitals'] 
     ['Slowest interaction', ms(vitals.interactionMs)],
   ]
   return (
-    <table border={1} cellPadding={6} cellSpacing={0}>
-      <caption>Web Vitals (75th percentile)</caption>
-      <tbody>
+    <Table>
+      <TableCaption>Web Vitals (75th percentile)</TableCaption>
+      <TableBody>
         {rows.map(([name, value]) => (
-          <tr key={name}>
-            <td>{name}</td>
-            <td align="right">{value}</td>
-          </tr>
+          <TableRow key={name}>
+            <TableCell className="font-medium">{name}</TableCell>
+            <TableCell className="text-right tabular-nums">{value}</TableCell>
+          </TableRow>
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   )
 }
 

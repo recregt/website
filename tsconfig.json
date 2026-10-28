@@ -13,7 +13,10 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "types": ["vite/client", "cloudflare-turnstile"],
-    "rootDirs": [".", "./.react-router/types"]
+    "rootDirs": [".", "./.react-router/types"],
+    "paths": {
+      "~/*": ["./app/*"]
+    }
   },
   "exclude": ["node_modules", "studio"]
 }

@@ -22,16 +22,18 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 
 export default function Admin({ loaderData: { range, stats } }: Route.ComponentProps) {
   return (
-    <main>
-      <h1>Admin</h1>
+    <main className="mx-auto max-w-6xl space-y-6 p-6">
+      <h1 className="font-heading text-2xl font-semibold tracking-tight">Admin</h1>
       <p>
         Range:{' '}
         {Object.keys(ranges).map((option) => (
           <span key={option}>
             {option === range ? (
-              <b>{option}</b>
+              <b className="font-semibold">{option}</b>
             ) : (
-              <Link to={`?range=${option}`}>{option}</Link>
+              <Link className="underline underline-offset-4" to={`?range=${option}`}>
+                {option}
+              </Link>
             )}{' '}
           </span>
         ))}
@@ -89,10 +91,8 @@ export default function Admin({ loaderData: { range, stats } }: Route.ComponentP
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <details open>
-      <summary>
-        <b>{title}</b>
-      </summary>
+    <details open className="space-y-3">
+      <summary className="font-semibold">{title}</summary>
       {children}
     </details>
   )

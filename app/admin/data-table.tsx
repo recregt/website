@@ -12,7 +12,19 @@ import {
   tableFeatures,
   useTable,
 } from '@tanstack/react-table'
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { useState } from 'react'
+
+import { Input } from '~/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '~/components/ui/table'
 
 const features = tableFeatures({
   rowSortingFeature,
@@ -53,62 +65,69 @@ export function DataTable<Row extends RowData>({
   const rows = table.getRowModel().rows
 
   return (
-    <>
+    <div className="space-y-3">
       {searchable && (
-        <p>
-          <label>
-            Search{' '}
-            <input
-              type="search"
-              value={globalFilter}
-              onChange={(event) => setGlobalFilter(event.target.value)}
-            />
-          </label>{' '}
-          {rows.length} of {data.length}
-        </p>
+        <div className="flex items-center gap-3">
+          <Input
+            type="search"
+            placeholder="Search"
+            value={globalFilter}
+            onChange={(event) => setGlobalFilter(event.target.value)}
+            className="max-w-xs"
+          />
+          <span className="text-muted-foreground text-sm">
+            {rows.length} of {data.length}
+          </span>
+        </div>
       )}
-      <table border={1} cellPadding={6} cellSpacing={0}>
-        {caption && <caption>{caption}</caption>}
-        <thead>
+      <Table>
+        {caption && <TableCaption>{caption}</TableCaption>}
+        <TableHeader>
           {table.getHeaderGroups().map((group) => (
-            <tr key={group.id}>
+            <TableRow key={group.id}>
               {group.headers.map((header) => (
-                <th key={header.id} align="left">
+                <TableHead key={header.id}>
                   {header.isPlaceholder ? null : (
-                    <button type="button" onClick={header.column.getToggleSortingHandler()}>
+                    <button
+                      type="button"
+                      onClick={header.column.getToggleSortingHandler()}
+                      className="inline-flex items-center gap-1 hover:text-foreground"
+                    >
                       <table.FlexRender header={header} />
-                      {sortMark(header.column.getIsSorted())}
+                      <SortIcon direction={header.column.getIsSorted()} />
                     </button>
                   )}
-                </th>
+                </TableHead>
               ))}
-            </tr>
+            </TableRow>
           ))}
-        </thead>
-        <tbody>
+        </TableHeader>
+        <TableBody>
           {rows.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length}>No data yet.</td>
-            </tr>
+            <TableRow>
+              <TableCell colSpan={columns.length} className="text-muted-foreground">
+                No data yet.
+              </TableCell>
+            </TableRow>
           ) : (
             rows.map((row) => (
-              <tr key={row.id}>
+              <TableRow key={row.id}>
                 {row.getAllCells().map((cell) => (
-                  <td key={cell.id} valign="top">
+                  <TableCell key={cell.id}>
                     <table.FlexRender cell={cell} />
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))
           )}
-        </tbody>
-      </table>
-    </>
+        </TableBody>
+      </Table>
+    </div>
   )
 }
 
-function sortMark(direction: false | 'asc' | 'desc'): string {
-  if (direction === 'asc') return ' ▲'
-  if (direction === 'desc') return ' ▼'
-  return ''
+function SortIcon({ direction }: { direction: false | 'asc' | 'desc' }) {
+  if (direction === 'asc') return <ArrowUp className="size-3.5" />
+  if (direction === 'desc') return <ArrowDown className="size-3.5" />
+  return <ArrowUpDown className="size-3.5 opacity-40" />
 }

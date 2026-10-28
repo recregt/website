@@ -14,5 +14,9 @@ const components = {
 }
 
 export function Body({ value }: { value: Post['body'] }) {
-  return <PortableText value={value} components={components} />
+  return (
+    <div className="prose">
+      <PortableText value={value} components={components} />
+    </div>
+  )
 }

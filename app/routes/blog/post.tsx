@@ -18,14 +18,30 @@ export async function loader({ params }: Route.LoaderArgs) {
 
 export default function BlogPost({ loaderData: { post } }: Route.ComponentProps) {
   return (
-    <main>
+    <main className="mx-auto max-w-2xl px-6 py-12">
       <article>
-        <h1>{post.title}</h1>
-        <time dateTime={post.publishedAt.toISOString()}>{post.publishedAt.toDateString()}</time>
+        <header>
+          <h1 className="font-heading text-4xl font-semibold tracking-tight text-balance">
+            {post.title}
+          </h1>
+          <p className="mt-4 text-lg text-muted-foreground">{post.summary}</p>
+          <time
+            className="mt-5 block font-mono text-sm text-muted-foreground"
+            dateTime={post.publishedAt.toISOString()}
+          >
+            {post.publishedAt.toDateString()}
+          </time>
+        </header>
         {post.coverImage && (
-          <img src={imageUrl(post.coverImage, 1600)} alt={post.coverImage.alt ?? ''} />
+          <img
+            className="mt-10 rounded-lg border border-border"
+            src={imageUrl(post.coverImage, 1600)}
+            alt={post.coverImage.alt ?? ''}
+          />
         )}
-        <Body value={post.body} />
+        <div className="mt-10">
+          <Body value={post.body} />
+        </div>
       </article>
     </main>
   )

@@ -26,8 +26,8 @@ export function TrafficChart({
         height,
         series: [
           {},
-          { label: 'Views', stroke: '#2563eb', width: 2, points: { show: true } },
-          { label: 'Visitors', stroke: '#16a34a', width: 2, points: { show: true } },
+          { label: 'Views', stroke: '#b4542c', width: 2, points: { show: true } },
+          { label: 'Visitors', stroke: '#3e6f52', width: 2, points: { show: true } },
         ],
         scales: { y: { range: (_chart, _min, max) => [0, Math.max(1, max)] } },
       },
