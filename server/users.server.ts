@@ -10,6 +10,7 @@ const account = {
   id: users.id,
   handle: users.handle,
   status: users.status,
+  role: users.role,
   createdAt: users.createdAt,
 }
 

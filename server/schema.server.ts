@@ -7,10 +7,16 @@ export const users = sqliteTable(
     id: text().primaryKey(),
     handle: text().notNull().unique(),
     status: text({ enum: ['pending', 'active'] }).notNull(),
+    role: text({ enum: ['member', 'admin'] })
+      .notNull()
+      .default('member'),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   },
   (table) => [index('users_by_status_age').on(table.status, table.createdAt)],
 )
 
-export type Account = Pick<typeof users.$inferSelect, 'id' | 'handle' | 'status' | 'createdAt'>
-export type User = Pick<Account, 'id' | 'handle'>
+export type Account = Pick<
+  typeof users.$inferSelect,
+  'id' | 'handle' | 'status' | 'role' | 'createdAt'
+>
+export type User = Pick<Account, 'id' | 'handle' | 'role'>

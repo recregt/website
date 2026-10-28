@@ -1,4 +1,11 @@
-import { type Cookie, createContext, createCookie, type MiddlewareFunction } from 'react-router'
+import {
+  type Cookie,
+  createContext,
+  createCookie,
+  data,
+  type MiddlewareFunction,
+  type RouterContextProvider,
+} from 'react-router'
 
 import * as parvus from './parvus/client.server'
 import type { User } from './schema.server'
@@ -20,12 +27,21 @@ export const sessionMiddleware: MiddlewareFunction<Response> = async (
 
   const session = await parvus.introspect({ token })
   const account = session.ok ? await findAccount(session.value.user_id) : null
-  const user = account?.status === 'active' ? { id: account.id, handle: account.handle } : null
+  const user =
+    account?.status === 'active'
+      ? { id: account.id, handle: account.handle, role: account.role }
+      : null
   context.set(userContext, user)
 
   const response = await next()
   if (!user) response.headers.append('set-cookie', await clearCookie(sessionCookie))
   return response
+}
+
+export function requireAdmin(context: Readonly<RouterContextProvider>): User {
+  const user = context.get(userContext)
+  if (user?.role !== 'admin') throw data(null, { status: 404 })
+  return user
 }
 
 export async function endSession(request: Request): Promise<string> {

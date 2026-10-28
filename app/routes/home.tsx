@@ -17,6 +17,7 @@ export default function Home({ loaderData: { user } }: Route.ComponentProps) {
       {user ? (
         <Form method="post" action="/signout">
           <p>Signed in as @{user.handle}</p>
+          {user.role === 'admin' && <Link to="/admin">Admin</Link>}
           <button type="submit">Sign out</button>
         </Form>
       ) : (

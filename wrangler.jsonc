@@ -12,10 +12,17 @@
     "PARVUS_ORIGINS": "https://recregt.com",
     "PARVUS_MAX_CREDENTIALS": "10",
     "PARVUS_DEV_URL": "",
-    "TURNSTILE_SITE_KEY": "0x4AAAAAAFpeuc-X-t-KNgEW"
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFpeuc-X-t-KNgEW",
+    "CLOUDFLARE_ACCOUNT_ID": "2470a0a5c66adee503ba1e58e1860858"
   },
   "secrets": {
-    "required": ["PARVUS_SECRET", "PARVUS_PEPPER", "PARVUS_DB", "TURNSTILE_SECRET"]
+    "required": [
+      "PARVUS_SECRET",
+      "PARVUS_PEPPER",
+      "PARVUS_DB",
+      "TURNSTILE_SECRET",
+      "ANALYTICS_TOKEN"
+    ]
   },
   "d1_databases": [
     {
