@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Link, useNavigation } from 'react-router'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { cn } from '~/lib/utils'
 
 import { requireAdmin } from '../../server/session.server'
@@ -10,7 +11,7 @@ import { analyticsConfigured, type SiteStats, siteStats } from '../../server/sta
 import { Sparkline, seriesColors, TrafficChart } from '../admin/chart'
 import { parseRange, type Range, ranges } from '../admin/ranges'
 import { AdminShell, RangeTabs } from '../admin/shell'
-import { Ranked, Reading, Recent, Slowest, Vitals } from '../admin/tables'
+import { Ranked, Recent, Slowest, Vitals } from '../admin/tables'
 import type { Route } from './+types/admin'
 
 export const meta: Route.MetaFunction = () => [
@@ -98,36 +99,64 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
       </Card>
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        <SectionCard title="Content">
+        <SectionCard title="Top pages">
           <Ranked rows={stats.content.pages} />
-          <Reading rows={stats.content.reading} />
-          <Ranked rows={stats.content.notFound} />
         </SectionCard>
-        <SectionCard title="Sources">
+        <SectionCard title="Referrers">
           <Ranked rows={stats.sources.referrers} />
-          <Ranked rows={stats.sources.campaigns} />
-        </SectionCard>
-        <SectionCard title="Audience">
-          <Ranked rows={stats.audience.countries} />
-          <Ranked rows={stats.audience.cities} />
-          <Ranked rows={stats.audience.networks} />
-          <Ranked rows={stats.audience.languages} />
-          <Ranked rows={stats.audience.timezones} />
-        </SectionCard>
-        <SectionCard title="Technology">
-          <Ranked rows={stats.technology.browsers} />
-          <Ranked rows={stats.technology.systems} />
-          <Ranked rows={stats.technology.devices} />
-          <Ranked rows={stats.technology.gpus} />
-          <Ranked rows={stats.technology.screens} />
-          <Ranked rows={stats.technology.colorSchemes} />
-          <Ranked rows={stats.technology.connections} />
-        </SectionCard>
-        <SectionCard title="Performance">
-          <Vitals vitals={stats.performance.vitals} />
-          <Slowest rows={stats.performance.slowest} />
         </SectionCard>
       </div>
+
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <TabsCard
+          title="Audience"
+          defaultValue="countries"
+          tabs={[
+            {
+              value: 'countries',
+              label: 'Countries',
+              content: <Ranked rows={stats.audience.countries} />,
+            },
+            { value: 'cities', label: 'Cities', content: <Ranked rows={stats.audience.cities} /> },
+            {
+              value: 'languages',
+              label: 'Languages',
+              content: <Ranked rows={stats.audience.languages} />,
+            },
+          ]}
+        />
+        <TabsCard
+          title="Technology"
+          defaultValue="browsers"
+          tabs={[
+            {
+              value: 'browsers',
+              label: 'Browsers',
+              content: <Ranked rows={stats.technology.browsers} />,
+            },
+            {
+              value: 'systems',
+              label: 'Operating systems',
+              content: <Ranked rows={stats.technology.systems} />,
+            },
+            {
+              value: 'devices',
+              label: 'Devices',
+              content: <Ranked rows={stats.technology.devices} />,
+            },
+            {
+              value: 'screens',
+              label: 'Screens',
+              content: <Ranked rows={stats.technology.screens} />,
+            },
+          ]}
+        />
+      </div>
+
+      <SectionCard title="Performance">
+        <Vitals vitals={stats.performance.vitals} />
+        <Slowest rows={stats.performance.slowest} />
+      </SectionCard>
 
       <Card>
         <CardHeader>
@@ -207,6 +236,44 @@ function SectionCard({ title, children }: { title: string; children: ReactNode }
       <CardContent className="p-4 pt-0">
         <div className="space-y-6">{children}</div>
       </CardContent>
+    </Card>
+  )
+}
+
+function TabsCard({
+  title,
+  defaultValue,
+  tabs,
+}: {
+  title: string
+  defaultValue: string
+  tabs: { value: string; label: string; content: ReactNode }[]
+}) {
+  return (
+    <Card>
+      <Tabs defaultValue={defaultValue} className="gap-0">
+        <CardHeader className="p-4 pb-3">
+          <CardTitle className="font-sans text-sm">{title}</CardTitle>
+          <TabsList variant="line" className="mt-2 h-7">
+            {tabs.map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="font-mono text-xs font-normal"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          {tabs.map((tab) => (
+            <TabsContent key={tab.value} value={tab.value}>
+              {tab.content}
+            </TabsContent>
+          ))}
+        </CardContent>
+      </Tabs>
     </Card>
   )
 }
