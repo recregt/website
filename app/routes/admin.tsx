@@ -1,6 +1,6 @@
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigation } from 'react-router'
 
 import {
   Breadcrumb,
@@ -36,6 +36,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 }
 
 export default function Admin({ loaderData: { range, stats, user } }: Route.ComponentProps) {
+  const loading = useNavigation().state === 'loading'
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
@@ -58,7 +59,13 @@ export default function Admin({ loaderData: { range, stats, user } }: Route.Comp
           </Breadcrumb>
         </header>
         <div className="admin-dark flex flex-1 flex-col">
-          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-6">
+          <div
+            aria-busy={loading}
+            className={cn(
+              'mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-6 transition-opacity duration-150',
+              loading && 'opacity-60',
+            )}
+          >
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
