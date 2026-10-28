@@ -219,7 +219,7 @@ async function recordRequest(
 }
 
 function pagePath(pathname: string): string {
-  if (pathname === '/_root.data') return '/'
+  if (pathname === '/_.data' || pathname === '/_root.data') return '/'
   return pathname.endsWith('.data') ? pathname.slice(0, -'.data'.length) : pathname
 }
 
