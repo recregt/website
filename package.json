@@ -14,7 +14,6 @@
     "check": "wrangler types && react-router typegen && tsc && tsc -p studio && biome ci ."
   },
   "dependencies": {
-    "@cloudflare/containers": "^0.3.7",
     "@portabletext/react": "^8.0.1",
     "@sanity/client": "^8.11.0",
     "@sanity/image-url": "^2.1.1",

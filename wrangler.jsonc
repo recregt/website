@@ -5,6 +5,7 @@
   "compatibility_date": "2026-10-23",
   "observability": { "enabled": true },
   "upload_source_maps": true,
+  "routes": [{ "pattern": "recregt.com", "custom_domain": true }],
   "vars": {
     "PARVUS_RP_ID": "recregt.com",
     "PARVUS_RP_NAME": "recregt",
@@ -16,11 +17,22 @@
   "secrets": {
     "required": ["PARVUS_SECRET", "PARVUS_PEPPER", "PARVUS_DB", "TURNSTILE_SECRET"]
   },
-  "d1_databases": [{ "binding": "DB", "database_name": "recregt" }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "recregt",
+      "database_id": "185f4732-96a8-4bcf-9fc7-f402165462f1"
+    }
+  ],
   "containers": [
     {
       "class_name": "ParvusContainer",
-      "image": "registry.cloudflare.com/2470a0a5c66adee503ba1e58e1860858/parvus:0.1.3"
+      "scheduling_policy": "durable_object",
+      "images": {
+        "parvus": {
+          "image": "registry.cloudflare.com/2470a0a5c66adee503ba1e58e1860858/parvus@sha256:c2d2cea01940d19c7638c2f3ccd3ae68684ea9bd6a2dab374ab8eea7d3b89a73"
+        }
+      }
     }
   ],
   "durable_objects": {
