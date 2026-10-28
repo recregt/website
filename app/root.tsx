@@ -8,6 +8,7 @@ import {
   Scripts,
   ScrollRestoration,
   useLoaderData,
+  useLocation,
 } from 'react-router'
 
 import { sessionMiddleware, userContext } from '../server/session.server'
@@ -23,6 +24,8 @@ export function loader({ context }: Route.LoaderArgs) {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user } = useLoaderData<typeof loader>()
+  const { pathname } = useLocation()
+  const standalone = pathname.startsWith('/admin')
   return (
     <html lang="en">
       <head>
@@ -32,37 +35,39 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <header className="border-b border-border">
-          <nav className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-            <Link to="/" className="font-mono text-sm">
-              recregt
-            </Link>
-            <div className="flex items-center gap-5 font-mono text-sm">
-              <Link to="/blog" className="transition-colors hover:text-ring">
-                Blog
+        {!standalone && (
+          <header className="border-b border-border">
+            <nav className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
+              <Link to="/" className="font-mono text-sm">
+                recregt
               </Link>
-              {user ? (
-                <>
-                  {user.role === 'admin' && (
-                    <Link to="/admin" className="transition-colors hover:text-ring">
-                      Admin
-                    </Link>
-                  )}
-                  <span className="text-muted-foreground">@{user.handle}</span>
-                  <Form method="post" action="/signout">
-                    <button type="submit" className="transition-colors hover:text-ring">
-                      Sign out
-                    </button>
-                  </Form>
-                </>
-              ) : (
-                <Link to="/signin" className="transition-colors hover:text-ring">
-                  Sign in
+              <div className="flex items-center gap-5 font-mono text-sm">
+                <Link to="/blog" className="transition-colors hover:text-ring">
+                  Blog
                 </Link>
-              )}
-            </div>
-          </nav>
-        </header>
+                {user ? (
+                  <>
+                    {user.role === 'admin' && (
+                      <Link to="/admin" className="transition-colors hover:text-ring">
+                        Admin
+                      </Link>
+                    )}
+                    <span className="text-muted-foreground">@{user.handle}</span>
+                    <Form method="post" action="/signout">
+                      <button type="submit" className="transition-colors hover:text-ring">
+                        Sign out
+                      </button>
+                    </Form>
+                  </>
+                ) : (
+                  <Link to="/signin" className="transition-colors hover:text-ring">
+                    Sign in
+                  </Link>
+                )}
+              </div>
+            </nav>
+          </header>
+        )}
         {children}
         <ScrollRestoration />
         <Scripts />

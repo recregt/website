@@ -1,15 +1,7 @@
 import { useMemo, useState } from 'react'
 
 import { Checkbox } from '~/components/ui/checkbox'
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '~/components/ui/table'
+import { Table, TableBody, TableCaption, TableCell, TableRow } from '~/components/ui/table'
 
 import type { SiteStats } from '../../server/stats.server'
 import { columnHelper, DataTable } from './data-table'
@@ -81,37 +73,6 @@ export function Reading({ rows }: { rows: ReadingRow[] }) {
 
 export function Slowest({ rows }: { rows: SlowRow[] }) {
   return <DataTable caption="Slowest server responses" columns={slowColumns} data={rows} />
-}
-
-export function Totals({ totals }: Pick<SiteStats, 'totals'>) {
-  const cells = [
-    ['Views', totals.views],
-    ['Visitors', totals.visitors],
-    ['Signed-in views', totals.signedIn],
-    ['Bot requests', totals.bots],
-  ] as const
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          {cells.map(([label]) => (
-            <TableHead key={label} className="text-center">
-              {label}
-            </TableHead>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow>
-          {cells.map(([label, value]) => (
-            <TableCell key={label} className="text-center text-lg font-semibold">
-              {value}
-            </TableCell>
-          ))}
-        </TableRow>
-      </TableBody>
-    </Table>
-  )
 }
 
 export function Ranked({
