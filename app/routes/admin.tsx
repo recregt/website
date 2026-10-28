@@ -299,7 +299,7 @@ function TabsCard({
             <TabsContent
               key={tab.value}
               value={tab.value}
-              className="flex h-[340px] flex-col overflow-y-auto"
+              className="h-[320px] flex flex-col overflow-y-auto"
             >
               {tab.content}
             </TabsContent>
