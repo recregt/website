@@ -92,10 +92,7 @@ export function DataTable<Row extends RowData>({
             {table.getHeaderGroups().map((group) => (
               <TableRow key={group.id}>
                 {group.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className="font-mono text-[11px] tracking-wider text-foreground/75 uppercase"
-                  >
+                  <TableHead key={header.id}>
                     {header.isPlaceholder ? null : (
                       <button
                         type="button"

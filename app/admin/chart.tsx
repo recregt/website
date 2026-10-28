@@ -6,7 +6,7 @@ import uPlot from 'uplot'
 const height = 320
 const axisFont = '10px "Geist Mono Variable", monospace'
 
-export const seriesColors = { views: '#818cf8', visitors: '#38bdf8' }
+export const seriesColors = { views: '#10b981', visitors: '#94a3b8' }
 
 export function TrafficChart({
   points,

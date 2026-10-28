@@ -5,6 +5,7 @@ export default [
   ...prefix('blog', [index('routes/blog/index.tsx'), route(':slug', 'routes/blog/post.tsx')]),
   route('signin', 'routes/signin.tsx'),
   route('admin', 'routes/admin.tsx'),
+  route('admin/logs', 'routes/admin.logs.tsx'),
   route('signout', 'routes/signout.ts'),
   route('auth/:step', 'routes/auth.ts'),
   route('e', 'routes/e.ts'),

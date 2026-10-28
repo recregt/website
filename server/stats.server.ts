@@ -110,25 +110,7 @@ export async function siteStats(range: Range) {
     topEngagement(engagement.timezone),
     topEngagement(engagement.colorScheme),
     topEngagement(engagement.connection),
-    query(
-      `SELECT timestamp, ${request.kind} AS kind, ${request.path} AS path, ${request.status} AS status, ${request.ip} AS ip, ${request.city} AS city, ${request.country} AS country, ${request.asOrganization} AS network, ${request.browser} AS browser, ${request.os} AS os, ${request.device} AS device, ${request.handle} AS handle, ${request.referrer} AS referrer, ${request.bot} AS bot FROM recregt_requests WHERE ${since} ORDER BY timestamp DESC LIMIT 200`,
-      z.object({
-        timestamp: z.string(),
-        kind: z.string(),
-        path: z.string(),
-        status: count,
-        ip: z.string(),
-        city: z.string(),
-        country: z.string(),
-        network: z.string(),
-        browser: z.string(),
-        os: z.string(),
-        device: z.string(),
-        handle: z.string(),
-        referrer: z.string(),
-        bot: count,
-      }),
-    ),
+    recentRequests(range),
   ])
 
   return {
@@ -167,6 +149,30 @@ export async function siteStats(range: Range) {
 }
 
 export type SiteStats = Awaited<ReturnType<typeof siteStats>>
+
+export async function recentRequests(range: Range) {
+  const since = `timestamp > NOW() - INTERVAL '${ranges[range]}' DAY`
+  return query(
+    `SELECT timestamp, ${request.kind} AS kind, ${request.path} AS path, ${request.status} AS status, ${request.durationMs} AS durationMs, ${request.ip} AS ip, ${request.city} AS city, ${request.country} AS country, ${request.asOrganization} AS network, ${request.browser} AS browser, ${request.os} AS os, ${request.device} AS device, ${request.handle} AS handle, ${request.referrer} AS referrer, ${request.bot} AS bot FROM recregt_requests WHERE ${since} ORDER BY timestamp DESC LIMIT 200`,
+    z.object({
+      timestamp: z.string(),
+      kind: z.string(),
+      path: z.string(),
+      status: count,
+      durationMs: count,
+      ip: z.string(),
+      city: z.string(),
+      country: z.string(),
+      network: z.string(),
+      browser: z.string(),
+      os: z.string(),
+      device: z.string(),
+      handle: z.string(),
+      referrer: z.string(),
+      bot: count,
+    }),
+  )
+}
 
 const reply = z.object({ data: z.array(z.unknown()) })
 

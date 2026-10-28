@@ -1,5 +1,5 @@
-import { BookOpen, Home, LayoutDashboard, LogOut } from 'lucide-react'
-import { Form, Link } from 'react-router'
+import { BookOpen, Home, LayoutDashboard, LogOut, ScrollText } from 'lucide-react'
+import { Form, Link, useLocation } from 'react-router'
 
 import { Badge } from '~/components/ui/badge'
 import {
@@ -19,6 +19,7 @@ import {
 import type { User } from '../../server/schema.server'
 
 export function AppSidebar({ user }: { user: User }) {
+  const { pathname } = useLocation()
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
@@ -40,9 +41,17 @@ export function AppSidebar({ user }: { user: User }) {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton isActive tooltip="Dashboard">
+                <SidebarMenuButton isActive={pathname === '/admin'} tooltip="Dashboard">
                   <LayoutDashboard />
                   <span>Dashboard</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton isActive={pathname === '/admin/logs'} tooltip="Logs" asChild>
+                  <Link to="/admin/logs">
+                    <ScrollText />
+                    <span>Logs</span>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>

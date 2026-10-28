@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 
-import { Checkbox } from '~/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableRow } from '~/components/ui/table'
+import { cn } from '~/lib/utils'
 
 import type { SiteStats } from '../../server/stats.server'
 import { columnHelper, DataTable } from './data-table'
@@ -19,9 +19,7 @@ const rankedColumns = ranked.columns([
   }),
   ranked.accessor('count', {
     header: 'Count',
-    cell: (info) => (
-      <span className="font-mono tabular-nums">{info.getValue().toLocaleString()}</span>
-    ),
+    cell: (info) => <span className="tabular-nums">{info.getValue().toLocaleString()}</span>,
   }),
   ranked.accessor('share', {
     header: 'Share',
@@ -32,40 +30,20 @@ const rankedColumns = ranked.columns([
 const recent = columnHelper<RecentRow>()
 const recentColumns = recent.columns([
   recent.accessor('timestamp', {
-    header: 'Time (UTC)',
+    header: 'Time',
     cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
   }),
-  recent.accessor('kind', { header: 'Kind' }),
+  recent.accessor('status', {
+    header: 'Status',
+    cell: (info) => <StatusBadge status={info.getValue()} />,
+  }),
   recent.accessor('path', {
     header: 'Path',
     cell: (info) => <span className="block max-w-72 truncate">{info.getValue()}</span>,
   }),
-  recent.accessor('status', { header: 'Status' }),
-  recent.accessor('handle', {
-    header: 'User',
-    cell: (info) => info.getValue() && `@${info.getValue()}`,
-  }),
-  recent.accessor('ip', {
-    header: 'IP',
-    cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
-  }),
-  recent.accessor((row) => [row.city, row.country].filter(Boolean).join(', '), {
-    id: 'location',
-    header: 'Location',
-    cell: (info) => <span className="block max-w-44 truncate">{info.getValue()}</span>,
-  }),
-  recent.accessor('network', {
-    header: 'Network',
-    cell: (info) => <span className="block max-w-44 truncate">{info.getValue()}</span>,
-  }),
-  recent.accessor((row) => `${row.browser} · ${row.os} · ${row.device}`, {
-    id: 'client',
-    header: 'Client',
-    cell: (info) => <span className="block max-w-56 truncate">{info.getValue()}</span>,
-  }),
-  recent.accessor('referrer', {
-    header: 'Referrer',
-    cell: (info) => <span className="block max-w-56 truncate">{info.getValue()}</span>,
+  recent.accessor('durationMs', {
+    header: 'Duration',
+    cell: (info) => <span className="tabular-nums">{Math.round(info.getValue())} ms</span>,
   }),
 ])
 
@@ -113,20 +91,21 @@ export function Ranked({ rows }: { rows: { name: string; count: number }[] }) {
 }
 
 export function Recent({ rows }: { rows: RecentRow[] }) {
-  const [hideBots, setHideBots] = useState(true)
-  const data = useMemo(() => (hideBots ? rows.filter((row) => !row.bot) : rows), [rows, hideBots])
+  return <DataTable columns={recentColumns} data={rows} />
+}
+
+export function StatusBadge({ status }: { status: number }) {
+  const ok = status < 400
   return (
-    <div className="space-y-3">
-      <label htmlFor="hide-bots" className="flex items-center gap-2 text-sm">
-        <Checkbox
-          id="hide-bots"
-          checked={hideBots}
-          onCheckedChange={(checked) => setHideBots(checked === true)}
-        />
-        Hide bots
-      </label>
-      <DataTable columns={recentColumns} data={data} searchable />
-    </div>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2 py-0.5 text-xs tabular-nums text-zinc-200',
+        ok ? 'border-emerald-500/20' : 'border-rose-500/20',
+      )}
+    >
+      <span className={cn('size-1.5 rounded-full', ok ? 'bg-emerald-400' : 'bg-rose-400')} />
+      {status}
+    </span>
   )
 }
 
@@ -144,8 +123,8 @@ export function Vitals({ vitals }: { vitals: SiteStats['performance']['vitals'] 
       <TableBody>
         {rows.map(([name, value]) => (
           <TableRow key={name}>
-            <TableCell className="font-medium">{name}</TableCell>
-            <TableCell className="text-right font-mono tabular-nums">{value}</TableCell>
+            <TableCell className="text-muted-foreground">{name}</TableCell>
+            <TableCell className="text-right tabular-nums">{value}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -157,13 +136,13 @@ function Bar({ value, max }: { value: number; max: number }) {
   const share = Math.max(0, Math.min(1, value / max))
   return (
     <div className="flex items-center gap-2.5">
-      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-foreground/10">
+      <div className="h-1 w-24 overflow-hidden rounded-full bg-[#1f2023]">
         <div
-          className="h-full rounded-full bg-ring transition-[width] duration-300"
+          className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
           style={{ width: `${share * 100}%` }}
         />
       </div>
-      <span className="w-10 text-right font-mono text-xs tabular-nums text-foreground/70">
+      <span className="w-10 text-right text-xs tabular-nums text-zinc-200">
         {Math.round(share * 100)}%
       </span>
     </div>
