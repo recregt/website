@@ -24,6 +24,10 @@
       "database_id": "185f4732-96a8-4bcf-9fc7-f402165462f1"
     }
   ],
+  "analytics_engine_datasets": [
+    { "binding": "REQUESTS", "dataset": "recregt_requests" },
+    { "binding": "ENGAGEMENT", "dataset": "recregt_engagement" }
+  ],
   "containers": [
     {
       "class_name": "ParvusContainer",

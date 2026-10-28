@@ -6,4 +6,5 @@ export default [
   route('signin', 'routes/signin.tsx'),
   route('signout', 'routes/signout.ts'),
   route('auth/:step', 'routes/auth.ts'),
+  route('e', 'routes/e.ts'),
 ] satisfies RouteConfig
