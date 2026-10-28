@@ -1,11 +1,10 @@
 import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router'
 
-import { analyticsMiddleware } from '../server/analytics.server'
 import { sessionMiddleware } from '../server/session.server'
 import type { Route } from './+types/root'
 import { useEngagement } from './analytics/engagement'
 
-export const middleware: Route.MiddlewareFunction[] = [sessionMiddleware, analyticsMiddleware]
+export const middleware: Route.MiddlewareFunction[] = [sessionMiddleware]
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (

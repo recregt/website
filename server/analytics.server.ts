@@ -1,9 +1,6 @@
 import { env } from 'cloudflare:workers'
 import { isbot } from 'isbot'
-import type { MiddlewareFunction } from 'react-router'
 import { z } from 'zod'
-
-import { userContext } from './session.server'
 
 export const requestBlobs = [
   'kind',
@@ -93,20 +90,6 @@ const browsers: [RegExp, string][] = [
   [/Version\/(\d+).*Safari/, 'Safari'],
 ]
 
-export const analyticsMiddleware: MiddlewareFunction<Response> = async (
-  { request, context },
-  next,
-) => {
-  const started = Date.now()
-  const response = await next()
-  const url = new URL(request.url)
-  if (url.pathname !== beaconPath) {
-    const user = context.get(userContext)
-    void recordRequest(request, url, response.status, Date.now() - started, user?.handle ?? '')
-  }
-  return response
-}
-
 const metric = z.number().finite().nonnegative().max(1e9).nullable()
 const label = z.string().max(512)
 
@@ -166,13 +149,14 @@ export async function recordEngagement(request: Request): Promise<Response> {
   return new Response(null, { status: 204 })
 }
 
-async function recordRequest(
+export async function recordRequest(
   request: Request,
-  url: URL,
   status: number,
   durationMs: number,
   handle: string,
 ): Promise<void> {
+  const url = new URL(request.url)
+  if (url.pathname === beaconPath) return
   const cf = request.cf
   const headers = request.headers
   const agent = describeAgent(headers.get('user-agent') ?? '')
