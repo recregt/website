@@ -65,7 +65,7 @@ export function DataTable<Row extends RowData>({
   const rows = table.getRowModel().rows
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-1 flex-col space-y-3">
       {searchable && (
         <div className="flex items-center gap-3">
           <Input
@@ -81,9 +81,11 @@ export function DataTable<Row extends RowData>({
         </div>
       )}
       {rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border/60 py-6">
-          <Inbox className="size-4 text-muted-foreground/60" />
-          <p className="font-mono text-xs text-muted-foreground">No data yet</p>
+        <div className="flex min-h-[220px] flex-1 items-center justify-center">
+          <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border/60 px-8 py-6">
+            <Inbox className="size-4 text-muted-foreground/60" />
+            <p className="font-mono text-xs text-muted-foreground">No data yet</p>
+          </div>
         </div>
       ) : (
         <Table>

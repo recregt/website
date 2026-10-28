@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 
-import { Table, TableBody, TableCell, TableRow } from '~/components/ui/table'
 import { cn } from '~/lib/utils'
 
 import type { SiteStats } from '../../server/stats.server'
@@ -106,29 +105,6 @@ export function StatusBadge({ status }: { status: number }) {
       <span className={cn('size-1.5 rounded-full', ok ? 'bg-emerald-400' : 'bg-rose-400')} />
       {status}
     </span>
-  )
-}
-
-export function Vitals({ vitals }: { vitals: SiteStats['performance']['vitals'] }) {
-  const ms = (value: number | null) => (value === null ? '—' : `${Math.round(value)} ms`)
-  const rows: [string, string][] = [
-    ['Time to first byte', ms(vitals.ttfbMs)],
-    ['First contentful paint', ms(vitals.fcpMs)],
-    ['Largest contentful paint', ms(vitals.lcpMs)],
-    ['Cumulative layout shift', vitals.cls === null ? '—' : vitals.cls.toFixed(3)],
-    ['Slowest interaction', ms(vitals.interactionMs)],
-  ]
-  return (
-    <Table>
-      <TableBody>
-        {rows.map(([name, value]) => (
-          <TableRow key={name}>
-            <TableCell className="text-muted-foreground">{name}</TableCell>
-            <TableCell className="text-right tabular-nums">{value}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
   )
 }
 

@@ -11,7 +11,7 @@ import { analyticsConfigured, type SiteStats, siteStats } from '../../server/sta
 import { Sparkline, seriesColors, TrafficChart } from '../admin/chart'
 import { parseRange, type Range, ranges } from '../admin/ranges'
 import { AdminShell, RangeTabs } from '../admin/shell'
-import { Ranked, Recent, Slowest, Vitals } from '../admin/tables'
+import { Ranked, Recent, Slowest } from '../admin/tables'
 import type { Route } from './+types/admin'
 
 export const meta: Route.MetaFunction = () => [
@@ -55,6 +55,7 @@ export default function Admin({ loaderData: { range, stats, user } }: Route.Comp
 function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
   const views = stats.series.map((point) => point.views)
   const visitors = stats.series.map((point) => point.visitors)
+  const vitals = stats.performance.vitals
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -98,7 +99,7 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
         </CardContent>
       </Card>
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title="Top pages">
           <Ranked rows={stats.content.pages} />
         </SectionCard>
@@ -157,10 +158,22 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
         />
       </div>
 
-      <SectionCard title="Performance">
-        <Vitals vitals={stats.performance.vitals} />
-        <Slowest rows={stats.performance.slowest} />
-      </SectionCard>
+      <Card>
+        <CardHeader className="p-4 pb-3">
+          <CardTitle className="font-sans text-sm">Performance</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 p-4 pt-0">
+          <div className="grid grid-cols-3 gap-3">
+            <MiniVital label="TTFB" value={ms(vitals.ttfbMs)} />
+            <MiniVital label="FCP" value={ms(vitals.fcpMs)} />
+            <MiniVital label="LCP" value={ms(vitals.lcpMs)} />
+          </div>
+          <div className="border-t border-border/40 pt-4">
+            <p className="pb-2 text-xs font-normal text-muted-foreground">Slowest requests</p>
+            <Slowest rows={stats.performance.slowest} />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -231,14 +244,25 @@ function Trend({ value }: { value: number | null }) {
   )
 }
 
+function MiniVital({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-muted/40 p-3">
+      <p className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-100">{value}</p>
+    </div>
+  )
+}
+
 function SectionCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Card>
+    <Card className="flex h-full flex-col">
       <CardHeader className="p-4 pb-3">
         <CardTitle className="font-sans text-sm">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <div className="space-y-6">{children}</div>
+      <CardContent className="flex flex-1 flex-col p-4 pt-0">
+        <div className="flex flex-1 flex-col space-y-6">{children}</div>
       </CardContent>
     </Card>
   )
@@ -258,12 +282,12 @@ function TabsCard({
       <Tabs defaultValue={defaultValue} className="gap-0">
         <CardHeader className="p-4 pb-3">
           <CardTitle className="font-sans text-sm">{title}</CardTitle>
-          <TabsList variant="line" className="mt-2 h-7">
+          <TabsList className="mt-2 h-8 rounded-md bg-[#1f2023] p-1">
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="font-mono text-xs font-normal"
+                className="font-mono text-xs font-medium data-active:bg-[#26272b] data-active:text-zinc-100 data-active:shadow-sm"
               >
                 {tab.label}
               </TabsTrigger>
@@ -275,7 +299,7 @@ function TabsCard({
             <TabsContent
               key={tab.value}
               value={tab.value}
-              className="flex h-[340px] flex-col overflow-y-auto"
+              className="flex min-h-[260px] flex-col overflow-y-auto"
             >
               {tab.content}
             </TabsContent>
@@ -295,6 +319,8 @@ function NotConfigured() {
     </Card>
   )
 }
+
+const ms = (value: number | null) => (value === null ? '—' : `${Math.round(value)} ms`)
 
 function delta(values: number[]): number | null {
   const half = Math.floor(values.length / 2)
