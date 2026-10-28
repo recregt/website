@@ -2,6 +2,7 @@
   "name": "recregt",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@12.9.0",
   "scripts": {
     "dev": "react-router dev",
     "parvus": "mkdir -p .parvus && set -a && . ./.dev.vars && parvus",
@@ -10,7 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply DB --local",
     "build": "react-router build",
-    "deploy": "react-router build && wrangler d1 migrations apply DB --remote && wrangler deploy",
+    "release": "wrangler d1 migrations apply DB --remote && wrangler deploy",
     "check": "wrangler types && react-router typegen && tsc && tsc -p studio && biome ci ."
   },
   "dependencies": {

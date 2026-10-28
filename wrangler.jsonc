@@ -28,6 +28,7 @@
     {
       "class_name": "ParvusContainer",
       "scheduling_policy": "durable_object",
+      "observability": { "logs": { "enabled": true } },
       "images": {
         "parvus": {
           "image": "registry.cloudflare.com/2470a0a5c66adee503ba1e58e1860858/parvus@sha256:c2d2cea01940d19c7638c2f3ccd3ae68684ea9bd6a2dab374ab8eea7d3b89a73"
