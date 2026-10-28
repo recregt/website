@@ -5,12 +5,15 @@
   "scripts": {
     "dev": "react-router dev",
     "parvus": "mkdir -p .parvus && set -a && . ./.dev.vars && parvus",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply DB --local",
     "build": "react-router build",
-    "deploy": "react-router build && wrangler deploy",
+    "deploy": "react-router build && wrangler d1 migrations apply DB --remote && wrangler deploy",
     "check": "wrangler types && react-router typegen && tsc && biome ci ."
   },
   "dependencies": {
     "@cloudflare/containers": "^0.3.7",
+    "drizzle-orm": "^0.45.4",
     "isbot": "^5.2.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -20,8 +23,10 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.65.0",
     "@react-router/dev": "^8.5.1",
+    "@types/cloudflare-turnstile": "^0.2.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "drizzle-kit": "^0.31.11",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "wrangler": "^4.154.0"

@@ -10,11 +10,13 @@
     "PARVUS_RP_NAME": "recregt",
     "PARVUS_ORIGINS": "https://recregt.com",
     "PARVUS_MAX_CREDENTIALS": "10",
-    "PARVUS_DEV_URL": ""
+    "PARVUS_DEV_URL": "",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAFpeuc-X-t-KNgEW"
   },
   "secrets": {
-    "required": ["PARVUS_SECRET", "PARVUS_PEPPER", "PARVUS_DB"]
+    "required": ["PARVUS_SECRET", "PARVUS_PEPPER", "PARVUS_DB", "TURNSTILE_SECRET"]
   },
+  "d1_databases": [{ "binding": "DB", "database_name": "recregt" }],
   "containers": [
     {
       "class_name": "ParvusContainer",

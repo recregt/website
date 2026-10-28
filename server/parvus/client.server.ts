@@ -1,12 +1,10 @@
 import { z } from 'zod'
 
+import type { CreationOptions, CredentialJSON, RequestOptions } from '../../app/auth/protocol'
 import { send } from './transport.server'
 
 export type ErrorCode = z.infer<typeof errorCode>
 export type Refusal = Exclude<ErrorCode, 'invalid_request' | 'unauthorized' | 'internal'>
-export type Result<T, E extends Refusal> = { ok: true; value: T } | { ok: false; error: E }
-export type CeremonyOptions = z.infer<typeof ceremonyOptions>
-export type Credential = Record<string, unknown>
 
 export class ParvusError extends Error {
   constructor(path: string, status: number, detail: string) {
@@ -26,7 +24,8 @@ const errorCode = z.enum([
   'internal',
 ])
 const errorReply = z.object({ error: errorCode })
-const ceremonyOptions = z.object({ publicKey: z.looseObject({}) })
+const creationOptions = z.custom<CreationOptions>(hasPublicKey)
+const requestOptions = z.custom<RequestOptions>(hasPublicKey)
 const session = z.object({ user_id: z.string(), token: z.string(), expires_at: z.iso.datetime() })
 const noContent = z.undefined()
 
@@ -37,13 +36,13 @@ export function registrationBegin(body: {
   enroll_token?: string
   ttl_seconds: number
 }) {
-  return call('POST', '/v1/registration/begin', body, ceremonyOptions, [
+  return call('POST', '/v1/registration/begin', body, creationOptions, [
     'already_exists',
     'authentication_failed',
   ])
 }
 
-export function registrationFinish(body: { slot: string; credential: Credential }) {
+export function registrationFinish(body: { slot: string; credential: CredentialJSON }) {
   return call(
     'POST',
     '/v1/registration/finish',
@@ -54,10 +53,14 @@ export function registrationFinish(body: { slot: string; credential: Credential 
 }
 
 export function loginBegin(body: { slot: string; user_id?: string; ttl_seconds: number }) {
-  return call('POST', '/v1/login/begin', body, ceremonyOptions, [])
+  return request('POST', '/v1/login/begin', body, requestOptions)
 }
 
-export function loginFinish(body: { slot: string; credential: Credential; ttl_seconds: number }) {
+export function loginFinish(body: {
+  slot: string
+  credential: CredentialJSON
+  ttl_seconds: number
+}) {
   return call('POST', '/v1/login/finish', body, session, ['authentication_failed'])
 }
 
@@ -82,18 +85,18 @@ export function introspect(body: { token: string; extend_by_seconds?: number }) 
 }
 
 export function logout(body: { token: string }) {
-  return call('POST', '/v1/logout', body, noContent, [])
+  return request('POST', '/v1/logout', body, noContent)
 }
 
 export function logoutAll(userId: string) {
-  return call('POST', `${user(userId)}/logout`, undefined, noContent, [])
+  return request('POST', `${user(userId)}/logout`, undefined, noContent)
 }
 
 export function credentialBegin(userId: string, body: { ttl_seconds: number }) {
-  return call('POST', `${user(userId)}/credentials/begin`, body, ceremonyOptions, ['not_found'])
+  return call('POST', `${user(userId)}/credentials/begin`, body, creationOptions, ['not_found'])
 }
 
-export function credentialFinish(userId: string, body: { credential: Credential }) {
+export function credentialFinish(userId: string, body: { credential: CredentialJSON }) {
   return call('POST', `${user(userId)}/credentials/finish`, body, noContent, [
     'authentication_failed',
     'credential_limit',
@@ -142,27 +145,54 @@ export function deleteUser(userId: string) {
   return call('DELETE', user(userId), undefined, noContent, ['not_found'])
 }
 
+function hasPublicKey(value: unknown) {
+  return typeof value === 'object' && value !== null && 'publicKey' in value
+}
+
 function user(id: string) {
   return `/v1/users/${encodeURIComponent(id)}`
 }
 
+type Method = 'GET' | 'POST' | 'DELETE'
+type Answer<T> = { value: T } | { code: ErrorCode; status: number }
+
+async function request<T>(
+  method: Method,
+  path: string,
+  body: object | undefined,
+  reply: z.ZodType<T>,
+): Promise<T> {
+  const answer = await exchange(method, path, body, reply)
+  if ('code' in answer) throw new ParvusError(path, answer.status, answer.code)
+  return answer.value
+}
+
 async function call<T, E extends Refusal>(
-  method: 'GET' | 'POST' | 'DELETE',
+  method: Method,
   path: string,
   body: object | undefined,
   reply: z.ZodType<T>,
   refusals: readonly E[],
-): Promise<Result<T, E>> {
+): Promise<{ ok: true; value: T } | { ok: false; error: E }> {
+  const answer = await exchange(method, path, body, reply)
+  if ('value' in answer) return { ok: true, value: answer.value }
+  if (isRefusal(refusals, answer.code)) return { ok: false, error: answer.code }
+  throw new ParvusError(path, answer.status, answer.code)
+}
+
+async function exchange<T>(
+  method: Method,
+  path: string,
+  body: object | undefined,
+  reply: z.ZodType<T>,
+): Promise<Answer<T>> {
   const response = await send(path, {
     method,
     ...(body && { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }),
   })
   const payload = await readPayload(path, response)
-  if (response.ok) return { ok: true, value: parse(path, response.status, reply, payload) }
-
-  const code = parse(path, response.status, errorReply, payload).error
-  if (isRefusal(refusals, code)) return { ok: false, error: code }
-  throw new ParvusError(path, response.status, code)
+  if (response.ok) return { value: parse(path, response.status, reply, payload) }
+  return { code: parse(path, response.status, errorReply, payload).error, status: response.status }
 }
 
 async function readPayload(path: string, response: Response): Promise<unknown> {

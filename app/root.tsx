@@ -1,6 +1,9 @@
 import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router'
 
+import { sessionMiddleware } from '../server/session.server'
 import type { Route } from './+types/root'
+
+export const middleware: Route.MiddlewareFunction[] = [sessionMiddleware]
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (

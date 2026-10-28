@@ -12,7 +12,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "types": ["vite/client"],
+    "types": ["vite/client", "cloudflare-turnstile"],
     "rootDirs": [".", "./.react-router/types"]
   }
 }
