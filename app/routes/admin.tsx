@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 
 import { requireAdmin } from '../../server/session.server'
 import { analyticsConfigured, siteStats } from '../../server/stats.server'
+import { TrafficChart } from '../admin/chart'
 import { parseRange, ranges } from '../admin/ranges'
-import { Ranked, Recent, Totals, table, Vitals } from '../admin/tables'
+import { Ranked, Reading, Recent, Slowest, Totals, Vitals } from '../admin/tables'
 import type { Route } from './+types/admin'
 
 export const meta: Route.MetaFunction = () => [
@@ -22,91 +24,76 @@ export default function Admin({ loaderData: { range, stats } }: Route.ComponentP
   return (
     <main>
       <h1>Admin</h1>
-      <nav>
+      <p>
+        Range:{' '}
         {Object.keys(ranges).map((option) => (
-          <Link key={option} to={`?range=${option}`} aria-current={option === range}>
-            {option}
-          </Link>
+          <span key={option}>
+            {option === range ? (
+              <b>{option}</b>
+            ) : (
+              <Link to={`?range=${option}`}>{option}</Link>
+            )}{' '}
+          </span>
         ))}
-      </nav>
+      </p>
 
       {stats === null ? (
         <p>Analytics is not configured: set the ANALYTICS_TOKEN secret.</p>
       ) : (
         <>
-          <Totals totals={stats.totals} daily={stats.daily} />
+          <Totals totals={stats.totals} />
+          <TrafficChart points={stats.series} />
 
-          <h2>Content</h2>
-          <Ranked title="Pages" rows={stats.content.pages} />
-          <table {...table}>
-            <caption>Reading</caption>
-            <thead>
-              <tr>
-                <th>Page</th>
-                <th>Views</th>
-                <th>Avg. visible</th>
-                <th>Avg. scroll</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.content.reading.map((row) => (
-                <tr key={row.name}>
-                  <td>{row.name}</td>
-                  <td>{row.views}</td>
-                  <td>{(row.visibleMs / 1000).toFixed(1)} s</td>
-                  <td>{Math.round(row.scrollDepth)}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <Ranked title="Not found (404)" rows={stats.content.notFound} />
+          <Section title="Content">
+            <Ranked title="Pages" rows={stats.content.pages} />
+            <Reading rows={stats.content.reading} />
+            <Ranked title="Not found (404)" rows={stats.content.notFound} />
+          </Section>
 
-          <h2>Sources</h2>
-          <Ranked title="Referrers" rows={stats.sources.referrers} />
-          <Ranked title="Campaigns" rows={stats.sources.campaigns} />
+          <Section title="Sources">
+            <Ranked title="Referrers" rows={stats.sources.referrers} />
+            <Ranked title="Campaigns" rows={stats.sources.campaigns} />
+          </Section>
 
-          <h2>Audience</h2>
-          <Ranked title="Countries" rows={stats.audience.countries} />
-          <Ranked title="Cities" rows={stats.audience.cities} />
-          <Ranked title="Networks" rows={stats.audience.networks} />
-          <Ranked title="Languages" rows={stats.audience.languages} />
-          <Ranked title="Timezones" rows={stats.audience.timezones} />
+          <Section title="Audience">
+            <Ranked title="Countries" rows={stats.audience.countries} />
+            <Ranked title="Cities" rows={stats.audience.cities} />
+            <Ranked title="Networks" rows={stats.audience.networks} />
+            <Ranked title="Languages" rows={stats.audience.languages} />
+            <Ranked title="Timezones" rows={stats.audience.timezones} />
+          </Section>
 
-          <h2>Technology</h2>
-          <Ranked title="Browsers" rows={stats.technology.browsers} />
-          <Ranked title="Operating systems" rows={stats.technology.systems} />
-          <Ranked title="Devices" rows={stats.technology.devices} />
-          <Ranked title="GPUs" rows={stats.technology.gpus} />
-          <Ranked title="Screens" rows={stats.technology.screens} />
-          <Ranked title="Color scheme" rows={stats.technology.colorSchemes} />
-          <Ranked title="Connection" rows={stats.technology.connections} />
+          <Section title="Technology">
+            <Ranked title="Browsers" rows={stats.technology.browsers} />
+            <Ranked title="Operating systems" rows={stats.technology.systems} />
+            <Ranked title="Devices" rows={stats.technology.devices} />
+            <Ranked title="GPUs" rows={stats.technology.gpus} />
+            <Ranked title="Screens" rows={stats.technology.screens} />
+            <Ranked title="Color scheme" rows={stats.technology.colorSchemes} />
+            <Ranked title="Connection" rows={stats.technology.connections} />
+          </Section>
 
-          <h2>Performance</h2>
-          <Vitals vitals={stats.performance.vitals} />
-          <table {...table}>
-            <caption>Slowest server responses</caption>
-            <thead>
-              <tr>
-                <th>Path</th>
-                <th>Avg.</th>
-                <th>Requests</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.performance.slowest.map((row) => (
-                <tr key={row.name}>
-                  <td>{row.name}</td>
-                  <td>{Math.round(row.ms)} ms</td>
-                  <td>{row.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Section title="Performance">
+            <Vitals vitals={stats.performance.vitals} />
+            <Slowest rows={stats.performance.slowest} />
+          </Section>
 
-          <h2>Recent requests</h2>
-          <Recent rows={stats.recent} />
+          <Section title="Recent requests">
+            <Recent rows={stats.recent} />
+          </Section>
         </>
       )}
     </main>
+  )
+}
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <details open>
+      <summary>
+        <b>{title}</b>
+      </summary>
+      {children}
+    </details>
   )
 }

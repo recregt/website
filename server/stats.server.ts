@@ -43,7 +43,7 @@ export async function siteStats(range: Range) {
 
   const [
     totals,
-    daily,
+    series,
     pages,
     referrers,
     campaigns,
@@ -70,8 +70,8 @@ export async function siteStats(range: Range) {
       z.object({ views: count, visitors: count, signedIn: count, bots: count }),
     ),
     query(
-      `SELECT toStartOfDay(timestamp) AS day, SUM(_sample_interval) AS views, COUNT(DISTINCT index1) AS visitors FROM recregt_requests WHERE ${views} GROUP BY day ORDER BY day`,
-      z.object({ day: z.string(), views: count, visitors: count }),
+      `SELECT ${range === '1d' ? 'toStartOfHour' : 'toStartOfDay'}(timestamp) AS time, SUM(_sample_interval) AS views, COUNT(DISTINCT index1) AS visitors FROM recregt_requests WHERE ${views} GROUP BY time ORDER BY time`,
+      z.object({ time: z.string(), views: count, visitors: count }),
     ),
     top(request.path),
     top(request.referrer, `${views} AND ${request.referrer} NOT LIKE '/%'`),
@@ -111,7 +111,7 @@ export async function siteStats(range: Range) {
     topEngagement(engagement.colorScheme),
     topEngagement(engagement.connection),
     query(
-      `SELECT timestamp, ${request.kind} AS kind, ${request.path} AS path, ${request.status} AS status, ${request.ip} AS ip, ${request.city} AS city, ${request.country} AS country, ${request.asOrganization} AS network, ${request.browser} AS browser, ${request.os} AS os, ${request.device} AS device, ${request.handle} AS handle, ${request.referrer} AS referrer FROM recregt_requests WHERE ${since} ORDER BY timestamp DESC LIMIT 50`,
+      `SELECT timestamp, ${request.kind} AS kind, ${request.path} AS path, ${request.status} AS status, ${request.ip} AS ip, ${request.city} AS city, ${request.country} AS country, ${request.asOrganization} AS network, ${request.browser} AS browser, ${request.os} AS os, ${request.device} AS device, ${request.handle} AS handle, ${request.referrer} AS referrer, ${request.bot} AS bot FROM recregt_requests WHERE ${since} ORDER BY timestamp DESC LIMIT 200`,
       z.object({
         timestamp: z.string(),
         kind: z.string(),
@@ -126,13 +126,14 @@ export async function siteStats(range: Range) {
         device: z.string(),
         handle: z.string(),
         referrer: z.string(),
+        bot: count,
       }),
     ),
   ])
 
   return {
     totals: totals[0] ?? { views: 0, visitors: 0, signedIn: 0, bots: 0 },
-    daily,
+    series,
     audience: {
       countries,
       cities: cities.map(({ city, country, count }) => ({ name: `${city}, ${country}`, count })),
