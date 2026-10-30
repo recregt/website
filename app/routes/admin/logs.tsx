@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { useNavigation } from 'react-router'
 
+import { Notice } from '~/components/notice'
+import { PageHeader } from '~/components/page-header'
 import { Input } from '~/components/ui/input'
 import {
   Table,
@@ -12,13 +13,13 @@ import {
 } from '~/components/ui/table'
 import { cn } from '~/lib/utils'
 
-import { requireAdmin } from '../../server/session.server'
-import { loadAnalytics, recentRequests } from '../../server/stats.server'
-import { AnalyticsNotice } from '../admin/notice'
-import { parseRange, rangeLabel } from '../admin/ranges'
-import { AdminShell, RangeTabs } from '../admin/shell'
-import { StatusBadge } from '../admin/tables'
-import type { Route } from './+types/admin.logs'
+import { requireAccess } from '../../../server/access.server'
+import { loadAnalytics, recentRequests } from '../../../server/stats.server'
+import { AnalyticsNotice } from '../../admin/notice'
+import { RangeTabs } from '../../admin/range-tabs'
+import { parseRange, rangeLabel } from '../../admin/ranges'
+import { StatusBadge } from '../../admin/tables'
+import type { Route } from './+types/logs'
 
 const history = 200
 const perPage = 50
@@ -29,39 +30,24 @@ export const meta: Route.MetaFunction = () => [
 ]
 
 export async function loader({ context, request }: Route.LoaderArgs) {
-  const user = requireAdmin(context)
+  requireAccess(context, 'admin')
   const range = parseRange(new URL(request.url).searchParams.get('range'))
-  return { range, logs: await loadAnalytics(() => recentRequests(range, history)), user }
+  return { range, logs: await loadAnalytics(() => recentRequests(range, history)) }
 }
 
 type LogRow = Awaited<ReturnType<typeof recentRequests>>[number]
 
-export default function Logs({ loaderData: { range, logs, user } }: Route.ComponentProps) {
-  const loading = useNavigation().state === 'loading'
+export default function Logs({ loaderData: { range, logs } }: Route.ComponentProps) {
   return (
-    <AdminShell user={user} crumb="logs">
-      <div
-        aria-busy={loading}
-        className={cn(
-          'mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 p-6 transition-opacity duration-150',
-          loading && 'opacity-60',
-        )}
-      >
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
-              Analytics
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight">Logs</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              The latest {history} requests over {rangeLabel(range)}.
-            </p>
-          </div>
-          <RangeTabs range={range} />
-        </div>
-        {logs.ok ? <LogBrowser logs={logs.value} /> : <AnalyticsNotice reason={logs.reason} />}
-      </div>
-    </AdminShell>
+    <>
+      <PageHeader
+        eyebrow="Analytics"
+        title="Logs"
+        description={`The latest ${history} requests over ${rangeLabel(range)}.`}
+        actions={<RangeTabs range={range} />}
+      />
+      {logs.ok ? <LogBrowser logs={logs.value} /> : <AnalyticsNotice reason={logs.reason} />}
+    </>
   )
 }
 
@@ -143,13 +129,7 @@ function LogBrowser({ logs }: { logs: LogRow[] }) {
         </div>
       </div>
 
-      {rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border/60 py-10">
-          <p className="font-mono text-xs text-muted-foreground">No matching requests</p>
-        </div>
-      ) : (
-        <LogTable rows={rows} />
-      )}
+      {rows.length === 0 ? <Notice>No matching requests</Notice> : <LogTable rows={rows} />}
     </>
   )
 }

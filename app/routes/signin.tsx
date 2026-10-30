@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react'
 import { redirect, useNavigate } from 'react-router'
 
+import { PageHeader } from '~/components/page-header'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 
 import { userContext } from '../../server/session.server'
 import { turnstileSiteKey } from '../../server/turnstile.server'
+import { nextPath } from '../auth/next'
 import { login, register } from '../auth/passkeys'
 import { useTurnstile } from '../auth/turnstile'
 import type { Route } from './+types/signin'
@@ -26,12 +28,13 @@ const messages: Record<Failure, string> = {
 
 export const meta: Route.MetaFunction = () => [{ title: 'Sign in · recregt' }]
 
-export function loader({ context }: Route.LoaderArgs) {
-  if (context.get(userContext)) throw redirect('/')
-  return { siteKey: turnstileSiteKey() }
+export function loader({ context, request }: Route.LoaderArgs) {
+  const next = nextPath(new URL(request.url).searchParams.get('next'))
+  if (context.get(userContext)) throw redirect(next)
+  return { next, siteKey: turnstileSiteKey() }
 }
 
-export default function SignIn({ loaderData: { siteKey } }: Route.ComponentProps) {
+export default function SignIn({ loaderData: { next, siteKey } }: Route.ComponentProps) {
   const navigate = useNavigate()
   const challenge = useRef<HTMLDivElement>(null)
   const human = useTurnstile(challenge, siteKey)
@@ -57,7 +60,7 @@ export default function SignIn({ loaderData: { siteKey } }: Route.ComponentProps
       if (!result.ok) setMessage(messages[result.error])
       else if (result.value.recoveryCode)
         setRecovery({ code: result.value.recoveryCode, signedIn: true })
-      else await navigate('/')
+      else await navigate(next)
     })
 
   const signUp = (handle: string, turnstile: string) =>
@@ -70,19 +73,17 @@ export default function SignIn({ loaderData: { siteKey } }: Route.ComponentProps
   if (recovery) {
     return (
       <main className="mx-auto max-w-md px-6 py-20">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
-          Save your recovery code
-        </h1>
-        <p className="mt-3 text-muted-foreground">
-          It is the only way back in if you lose every device with your passkey.
-        </p>
+        <PageHeader
+          title="Save your recovery code"
+          description="It is the only way back in if you lose every device with your passkey."
+        />
         <pre className="mt-6 overflow-x-auto rounded-lg border border-border bg-muted p-4 font-mono text-sm">
           {recovery.code}
         </pre>
         <Button
           className="mt-6"
           disabled={busy}
-          onClick={recovery.signedIn ? () => navigate('/') : signIn}
+          onClick={recovery.signedIn ? () => navigate(next) : signIn}
         >
           {recovery.signedIn ? 'I saved it, continue' : 'I saved it, sign me in'}
         </Button>
@@ -97,7 +98,7 @@ export default function SignIn({ loaderData: { siteKey } }: Route.ComponentProps
 
   return (
     <main className="mx-auto max-w-md px-6 py-20">
-      <h1 className="font-heading text-3xl font-semibold tracking-tight">Sign in</h1>
+      <PageHeader title="Sign in" />
       <Card className="mt-6">
         <CardContent className="space-y-4">
           <Button className="w-full" disabled={busy} onClick={signIn}>

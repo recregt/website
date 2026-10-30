@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import {
   isRouteErrorResponse,
   Link,
@@ -7,16 +6,18 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useLoaderData,
-  useLocation,
+  useRouteLoaderData,
 } from 'react-router'
 
+import { AccessDenied, SignInRequired } from '~/components/access-notice'
+import { PageHeader } from '~/components/page-header'
 import { SiteHeader } from '~/components/site-header'
-import { TooltipProvider } from '~/components/ui/tooltip'
 
+import type { User } from '../server/schema.server'
 import { sessionMiddleware, userContext } from '../server/session.server'
 import type { Route } from './+types/root'
 import { useEngagement } from './analytics/engagement'
+import { deniedCapability } from './auth/access'
 import './app.css'
 
 export const middleware: Route.MiddlewareFunction[] = [sessionMiddleware]
@@ -26,21 +27,9 @@ export function loader({ context }: Route.LoaderArgs) {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { user } = useLoaderData<typeof loader>()
-  const { pathname } = useLocation()
-  const standalone = pathname.startsWith('/admin')
-
-  useEffect(() => {
-    const media = matchMedia('(prefers-color-scheme: dark)')
-    const sync = () =>
-      document.documentElement.classList.toggle('dark', standalone || media.matches)
-    sync()
-    media.addEventListener('change', sync)
-    return () => media.removeEventListener('change', sync)
-  }, [standalone])
-
+  const user = useRouteLoaderData<typeof loader>('root')?.user ?? null
   return (
-    <html lang="en" className={standalone ? 'dark' : undefined}>
+    <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -48,8 +37,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {!standalone && <SiteHeader user={user} />}
-        <TooltipProvider>{children}</TooltipProvider>
+        <SiteHeader user={user} />
+        {children}
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -63,20 +52,38 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  const notFound = isRouteErrorResponse(error) && error.status === 404
+  const user = useRouteLoaderData<typeof loader>('root')?.user ?? null
   return (
-    <main className="mx-auto max-w-2xl px-6 py-20">
-      <h1 className="font-heading text-3xl font-semibold tracking-tight">
-        {notFound ? 'Not found' : 'Something went wrong'}
-      </h1>
+    <main className="mx-auto max-w-md px-6 py-20">
+      <ErrorContent error={error} user={user} />
+    </main>
+  )
+}
+
+function ErrorContent({ error, user }: { error: unknown; user: User | null }) {
+  if (isRouteErrorResponse(error)) {
+    const capability = deniedCapability(error.data)
+    if (error.status === 401 && capability) return <SignInRequired />
+    if (error.status === 403 && capability && user)
+      return <AccessDenied user={user} capability={capability} />
+    if (error.status === 404) return <Problem title="Not found" />
+  }
+  return <Problem title="Something went wrong" />
+}
+
+function Problem({ title }: { title: string }) {
+  return (
+    <>
+      <PageHeader title={title} />
       <p className="mt-6 font-mono text-sm">
         <Link
           to="/"
+          viewTransition
           className="text-ring underline decoration-ring/50 underline-offset-4 hover:decoration-ring"
         >
           ← Back home
         </Link>
       </p>
-    </main>
+    </>
   )
 }
