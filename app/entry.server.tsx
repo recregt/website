@@ -3,6 +3,8 @@ import { renderToReadableStream } from 'react-dom/server'
 import type { EntryContext } from 'react-router'
 import { ServerRouter } from 'react-router'
 
+import { NonceContext } from './asset-guard'
+
 export const streamTimeout = 5_000
 
 const turnstile = 'https://challenges.cloudflare.com'
@@ -24,7 +26,9 @@ export default async function handleRequest(
 
   let shellRendered = false
   const body = await renderToReadableStream(
-    <ServerRouter context={routerContext} url={request.url} nonce={nonce} />,
+    <NonceContext value={nonce}>
+      <ServerRouter context={routerContext} url={request.url} nonce={nonce} />
+    </NonceContext>,
     {
       nonce,
       signal: AbortSignal.timeout(streamTimeout + 1000),
