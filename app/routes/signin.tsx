@@ -11,6 +11,7 @@ import { userContext } from '../../server/session.server'
 import { turnstileSiteKey } from '../../server/turnstile.server'
 import { nextPath } from '../auth/next'
 import { login, register } from '../auth/passkeys'
+import { handleRules } from '../auth/protocol'
 import { useTurnstile } from '../auth/turnstile'
 import type { Route } from './+types/signin'
 
@@ -20,7 +21,7 @@ type Failure = Extract<
 >['error']
 
 const messages: Record<Failure, string> = {
-  invalid_handle: 'Handles are 3 to 24 characters: lowercase letters, digits, - and _.',
+  invalid_handle: handleRules,
   not_human: 'We could not confirm you are human. Try again.',
   handle_taken: 'That handle is taken.',
   ceremony_failed: 'The passkey could not be verified. Try again.',
@@ -148,7 +149,7 @@ export default function SignIn({ loaderData: { next, siteKey } }: Route.Componen
                 className="h-11 pl-7"
               />
             </div>
-            <p className="text-sm text-muted-foreground">{messages.invalid_handle}</p>
+            <p className="text-sm text-muted-foreground">{handleRules}</p>
           </div>
           <div ref={challenge} />
           <Button

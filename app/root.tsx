@@ -76,7 +76,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 function ErrorContent({ error, user }: { error: unknown; user: User | null }) {
   if (isRouteErrorResponse(error)) {
     const capability = deniedCapability(error.data)
-    if (error.status === 401 && capability) return <SignInRequired />
+    if (error.status === 401) return <SignInRequired />
     if (error.status === 403 && capability && user)
       return <AccessDenied user={user} capability={capability} />
     if (error.status === 404) return <Problem title="Not found" />

@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:workers'
-import { and, asc, eq, lt } from 'drizzle-orm'
+import { and, asc, eq, lt, notExists } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 
 import { type Account, users } from './schema.server'
@@ -25,6 +25,16 @@ export async function adminHandles(): Promise<string[]> {
     .from(users)
     .where(eq(users.role, 'admin'))
   return admins.map((admin) => admin.handle)
+}
+
+export async function renameAccount(id: string, handle: string): Promise<boolean> {
+  const holder = db.select({ id: users.id }).from(users).where(eq(users.handle, handle))
+  const renamed = await db
+    .update(users)
+    .set({ handle })
+    .where(and(eq(users.id, id), notExists(holder)))
+    .returning({ id: users.id })
+  return renamed.length === 1
 }
 
 export async function findAccountByHandle(handle: string): Promise<Account | null> {
