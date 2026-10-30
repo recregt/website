@@ -50,6 +50,7 @@ const bodies: { [S in Step]: z.ZodType<Steps[S]['body']> } = {
   'registration-finish': z.object({ credential }),
   'login-begin': empty,
   'login-finish': z.object({ credential }),
+  recover: z.object({ handle: z.string(), code: z.string(), turnstile: z.string() }),
   'confirm-begin': empty,
   'confirm-finish': z.object({ credential }),
   'passkey-begin': empty,
@@ -131,6 +132,29 @@ const handlers: { [S in Step]: Handler<S> } = {
       cookies: [
         await sessionCookie.serialize(token, { expires: new Date(expires_at) }),
         await clearCookie(slotCookie),
+      ],
+    }
+  },
+
+  recover: async (body, request) => {
+    if (!(await verifyHuman(body.turnstile, request))) return refuse('not_human')
+    const handle = normalizeHandle(body.handle)
+    const account = handle ? await findAccountByHandle(handle) : null
+    const recovered = await parvus.recoverAccount({
+      user_id: account?.status === 'active' ? account.id : crypto.randomUUID(),
+      code: body.code,
+      ttl_seconds: sessionSeconds,
+    })
+    if (!recovered.ok) return refuse('invalid_code')
+
+    const { token, expires_at, recovery_code, credential_count } = recovered.value
+    return {
+      reply: { ok: true, value: { recoveryCode: recovery_code, passkeys: credential_count } },
+      cookies: [
+        await sessionCookie.serialize(token, { expires: new Date(expires_at) }),
+        await confirmCookie.serialize(token, {
+          expires: new Date(Date.now() + ceremonySeconds * 1000),
+        }),
       ],
     }
   },

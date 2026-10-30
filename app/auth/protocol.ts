@@ -27,6 +27,11 @@ export type Steps = {
     value: { handle: string; recoveryCode: string | null }
     error: 'ceremony_failed'
   }
+  recover: {
+    body: { handle: string; code: string; turnstile: string }
+    value: { recoveryCode: string; passkeys: number }
+    error: 'not_human' | 'invalid_code'
+  }
   'confirm-begin': {
     body: Record<string, never>
     value: RequestOptions

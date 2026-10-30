@@ -33,11 +33,12 @@ await devtools.send('WebAuthn.addVirtualAuthenticator', {
   },
 })
 
-await page.goto(new URL('/signin', values.base).href)
+await page.goto(new URL('/signup', values.base).href)
 await page.waitForSelector('html[data-hydrated]', { state: 'attached' })
 await page.fill('#handle', handle)
-await page.getByRole('button', { name: 'Create an account' }).click()
-await page.getByRole('button', { name: 'I saved it, sign me in' }).click()
+await page.getByRole('button', { name: 'Continue with a passkey' }).click()
+await page.getByLabel('I have saved this code').check()
+await page.getByRole('button', { name: 'Sign in to finish' }).click()
 await page.getByRole('button', { name: `@${handle}` }).waitFor()
 
 const promoted = spawnSync(

@@ -22,8 +22,13 @@ export async function login() {
   return post('login-finish', { credential })
 }
 
-export async function addPasskey() {
-  const begin = await confirmed(() => post('passkey-begin', {}))
+export function recover(handle: string, code: string, turnstile: string) {
+  return post('recover', { handle, code, turnstile })
+}
+
+export async function addPasskey({ confirm = true } = {}) {
+  const attempt = () => post('passkey-begin', {})
+  const begin = confirm ? await confirmed(attempt) : await attempt()
   if (!begin.ok) return begin
 
   const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(begin.value.publicKey)

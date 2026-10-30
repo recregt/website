@@ -4,6 +4,8 @@ export default [
   index('routes/home.tsx'),
   ...prefix('blog', [index('routes/blog/index.tsx'), route(':slug', 'routes/blog/post.tsx')]),
   route('signin', 'routes/signin.tsx'),
+  route('signup', 'routes/signup.tsx'),
+  route('recover', 'routes/recover.tsx'),
   ...prefix('stats', [
     index('routes/stats/index.tsx'),
     route('requests', 'routes/stats/requests.tsx'),
