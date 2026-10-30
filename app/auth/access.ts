@@ -1,11 +1,11 @@
 import type { User } from '../../server/schema.server'
 
-const capabilities = ['admin'] as const
+const capabilities = ['admin', 'stats:full'] as const
 
 export type Capability = (typeof capabilities)[number]
 
 const grants: Record<User['role'], readonly Capability[]> = {
-  admin: ['admin'],
+  admin: ['admin', 'stats:full'],
   member: [],
 }
 

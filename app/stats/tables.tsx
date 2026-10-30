@@ -2,12 +2,12 @@ import { useMemo } from 'react'
 
 import { cn } from '~/lib/utils'
 
-import type { SiteStats } from '../../server/stats.server'
+import type { StatsDetails } from '../../server/stats.server'
 import { columnHelper, DataTable } from './data-table'
 
 type RankedRow = { name: string; count: number; share: number }
-type RecentRow = SiteStats['recent'][number]
-type SlowRow = SiteStats['performance']['slowest'][number]
+type RecentRow = StatsDetails['recent'][number]
+type SlowRow = StatsDetails['slowest'][number]
 
 const ranked = columnHelper<RankedRow>()
 const rankedColumns = ranked.columns([
@@ -20,7 +20,7 @@ const rankedColumns = ranked.columns([
     cell: (info) => <span className="tabular-nums">{info.getValue().toLocaleString()}</span>,
   }),
   ranked.accessor('share', {
-    header: 'Share',
+    header: 'Share of views',
     cell: (info) => <Bar share={info.getValue()} />,
   }),
 ])
@@ -59,11 +59,17 @@ export function Slowest({ rows }: { rows: SlowRow[] }) {
   return <DataTable columns={slowColumns} data={rows} />
 }
 
-export function Ranked({ rows }: { rows: { name: string; count: number }[] }) {
-  const data = useMemo(() => {
-    const total = rows.reduce((sum, row) => sum + row.count, 0)
-    return rows.map((row) => ({ ...row, share: total ? row.count / total : 0 }))
-  }, [rows])
+export function Ranked({
+  rows,
+  total,
+}: {
+  rows: { name: string; count: number }[]
+  total: number
+}) {
+  const data = useMemo(
+    () => rows.map((row) => ({ ...row, share: total ? row.count / total : 0 })),
+    [rows, total],
+  )
   return <DataTable columns={rankedColumns} data={data} />
 }
 
