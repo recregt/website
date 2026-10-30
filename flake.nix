@@ -18,6 +18,28 @@
       ];
     in
     {
+      apps = forEach (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          app = name: runtimeInputs: text: {
+            type = "app";
+            program = pkgs.lib.getExe (pkgs.writeShellApplication { inherit name runtimeInputs text; });
+          };
+        in
+        {
+          lint = app "lint" [ pkgs.biome ] ''
+            biome check --no-errors-on-unmatched --files-ignore-unknown=true "$@"
+          '';
+          nixfmt = app "nixfmt" [ pkgs.nixfmt ] ''
+            nixfmt --check "$@"
+          '';
+          check = app "check" [ pkgs.nodejs_24 pkgs.pnpm pkgs.biome ] ''
+            pnpm check
+          '';
+        }
+      );
+
       devShells = forEach (
         system:
         let
@@ -29,6 +51,9 @@
               pkgs.nodejs_24
               pkgs.pnpm
               pkgs.biome
+              pkgs.nixfmt
+              pkgs.lefthook
+              pkgs.python3
               parvus.packages.${system}.default
             ];
           };

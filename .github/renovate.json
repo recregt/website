@@ -1,0 +1,43 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices"],
+  "enabledManagers": ["custom.regex", "github-actions", "nix", "npm"],
+  "dependencyDashboard": true,
+  "semanticCommitScope": "",
+  "lockFileMaintenance": {
+    "enabled": false
+  },
+  "nix": {
+    "enabled": true,
+    "lockFileMaintenance": {
+      "enabled": true,
+      "schedule": ["* * 1,15 * *"]
+    }
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^lefthook\\.yml$/", "/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": [
+        "(?:git_url: https://github\\.com/|repository: )recregt/commitlint\\n\\s+ref: (?<currentValue>\\S+)"
+      ],
+      "depNameTemplate": "recregt/commitlint",
+      "datasourceTemplate": "github-tags"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "pinDigests": true,
+      "commitMessageTopic": "{{depName}}",
+      "semanticCommitType": "ci"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm non-major",
+      "minimumReleaseAge": "3 days"
+    }
+  ]
+}

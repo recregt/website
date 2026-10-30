@@ -1,0 +1,19 @@
+remotes:
+  - git_url: https://github.com/recregt/commitlint
+    ref: v2.0.1
+    configs:
+      - lefthook-remote.yml
+
+pre-commit:
+  commands:
+    biome:
+      glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
+      run: nix run .#lint -- {staged_files}
+    nixfmt:
+      glob: "*.nix"
+      run: nix run .#nixfmt -- {staged_files}
+
+pre-push:
+  commands:
+    check:
+      run: nix run .#check
