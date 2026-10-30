@@ -15,6 +15,7 @@ export function useTurnstile(container: RefObject<HTMLElement | null>, siteKey: 
       widget.current =
         api.render(container.current, {
           sitekey: siteKey,
+          appearance: 'interaction-only',
           callback: setToken,
           'expired-callback': () => setToken(null),
           'error-callback': () => setToken(null),
