@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react'
-import { Form, Link } from 'react-router'
+import { Form, Link, useNavigation } from 'react-router'
 
 import {
   DropdownMenu,
@@ -14,14 +14,15 @@ import type { User } from '../../server/schema.server'
 
 export function SiteHeader({ user }: { user: User | null }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md [view-transition-name:site-header]">
       <div className="mx-auto flex h-12 w-full max-w-6xl items-center justify-between px-4">
-        <Link to="/" className="font-mono text-sm tracking-tight">
+        <Link to="/" viewTransition className="font-mono text-sm tracking-tight">
           recregt
         </Link>
         <nav className="flex items-center gap-3 font-mono text-xs">
           <Link
             to="/blog"
+            viewTransition
             className="text-muted-foreground transition-colors hover:text-foreground"
           >
             Blog
@@ -43,7 +44,7 @@ export function SiteHeader({ user }: { user: User | null }) {
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/admin" className="cursor-pointer">
+                      <Link to="/admin" viewTransition className="cursor-pointer">
                         Admin
                       </Link>
                     </DropdownMenuItem>
@@ -65,6 +66,7 @@ export function SiteHeader({ user }: { user: User | null }) {
           ) : (
             <Link
               to="/signin"
+              viewTransition
               className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs transition-colors hover:bg-muted"
             >
               Sign in
@@ -72,6 +74,20 @@ export function SiteHeader({ user }: { user: User | null }) {
           )}
         </nav>
       </div>
+      <NavigationProgress />
     </header>
+  )
+}
+
+function NavigationProgress() {
+  const busy = useNavigation().state !== 'idle'
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden"
+      hidden={!busy}
+    >
+      <div className="h-full w-1/3 animate-progress bg-ring motion-reduce:w-full motion-reduce:animate-none" />
+    </div>
   )
 }

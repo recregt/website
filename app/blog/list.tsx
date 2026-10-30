@@ -8,7 +8,7 @@ export function PostList({ posts }: { posts: PostSummary[] }) {
     <ul>
       {posts.map((post) => (
         <li key={post.slug} className="border-t border-border first:border-t-0">
-          <Link to={`/blog/${post.slug}`} className="group block py-6">
+          <Link to={`/blog/${post.slug}`} viewTransition className="group block py-6">
             <h2 className="font-heading text-2xl font-medium tracking-tight transition-colors group-hover:text-ring">
               {post.title}
             </h2>

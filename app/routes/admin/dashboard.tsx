@@ -1,6 +1,6 @@
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import { type ReactNode, useMemo } from 'react'
-import { Link, useNavigation } from 'react-router'
+import { Link } from 'react-router'
 
 import { PageHeader } from '~/components/page-header'
 import { Section } from '~/components/section'
@@ -8,14 +8,14 @@ import { Card, CardContent, CardHeader } from '~/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { cn } from '~/lib/utils'
 
-import { requireAdmin } from '../../server/session.server'
-import { loadAnalytics, type SiteStats, siteStats } from '../../server/stats.server'
-import { Sparkline, seriesTokens, TrafficChart } from '../admin/chart'
-import { AnalyticsNotice } from '../admin/notice'
-import { parseRange, type Range, rangeLabel } from '../admin/ranges'
-import { AdminShell, RangeTabs } from '../admin/shell'
-import { Ranked, Recent, Slowest } from '../admin/tables'
-import type { Route } from './+types/admin'
+import { requireAdmin } from '../../../server/session.server'
+import { loadAnalytics, type SiteStats, siteStats } from '../../../server/stats.server'
+import { Sparkline, seriesTokens, TrafficChart } from '../../admin/chart'
+import { AnalyticsNotice } from '../../admin/notice'
+import { RangeTabs } from '../../admin/range-tabs'
+import { parseRange, type Range, rangeLabel } from '../../admin/ranges'
+import { Ranked, Recent, Slowest } from '../../admin/tables'
+import type { Route } from './+types/dashboard'
 
 export const meta: Route.MetaFunction = () => [
   { title: 'Admin · recregt' },
@@ -23,30 +23,21 @@ export const meta: Route.MetaFunction = () => [
 ]
 
 export async function loader({ context, request }: Route.LoaderArgs) {
-  const user = requireAdmin(context)
+  requireAdmin(context)
   const range = parseRange(new URL(request.url).searchParams.get('range'))
-  return { range, stats: await loadAnalytics(() => siteStats(range)), user }
+  return { range, stats: await loadAnalytics(() => siteStats(range)) }
 }
 
-export default function Admin({ loaderData: { range, stats, user } }: Route.ComponentProps) {
-  const loading = useNavigation().state === 'loading'
+export default function DashboardPage({ loaderData: { range, stats } }: Route.ComponentProps) {
   return (
-    <AdminShell user={user}>
-      <div
-        aria-busy={loading}
-        className={cn(
-          'mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-6 transition-opacity duration-150',
-          loading && 'opacity-60',
-        )}
-      >
-        <PageHeader eyebrow="Analytics" title="Dashboard" actions={<RangeTabs range={range} />} />
-        {stats.ok ? (
-          <Dashboard range={range} stats={stats.value} />
-        ) : (
-          <AnalyticsNotice reason={stats.reason} />
-        )}
-      </div>
-    </AdminShell>
+    <>
+      <PageHeader eyebrow="Analytics" title="Dashboard" actions={<RangeTabs range={range} />} />
+      {stats.ok ? (
+        <Dashboard range={range} stats={stats.value} />
+      ) : (
+        <AnalyticsNotice reason={stats.reason} />
+      )}
+    </>
   )
 }
 
@@ -137,6 +128,7 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
         action={
           <Link
             to="/admin/logs"
+            viewTransition
             className="font-mono text-xs text-muted-foreground hover:text-foreground"
           >
             View all →

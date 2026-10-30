@@ -23,6 +23,7 @@ export default function Home({ loaderData: { posts } }: Route.ComponentProps) {
           <p className="mt-6 font-mono text-sm">
             <Link
               to="/blog"
+              viewTransition
               className="text-ring underline decoration-ring/50 underline-offset-4 hover:decoration-ring"
             >
               All posts →

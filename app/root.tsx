@@ -6,12 +6,10 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useLoaderData,
-  useLocation,
+  useRouteLoaderData,
 } from 'react-router'
 
 import { SiteHeader } from '~/components/site-header'
-import { TooltipProvider } from '~/components/ui/tooltip'
 
 import { sessionMiddleware, userContext } from '../server/session.server'
 import type { Route } from './+types/root'
@@ -25,10 +23,7 @@ export function loader({ context }: Route.LoaderArgs) {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const { user } = useLoaderData<typeof loader>()
-  const { pathname } = useLocation()
-  const standalone = pathname.startsWith('/admin')
-
+  const user = useRouteLoaderData<typeof loader>('root')?.user ?? null
   return (
     <html lang="en">
       <head>
@@ -38,8 +33,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {!standalone && <SiteHeader user={user} />}
-        <TooltipProvider>{children}</TooltipProvider>
+        <SiteHeader user={user} />
+        {children}
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -62,6 +57,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       <p className="mt-6 font-mono text-sm">
         <Link
           to="/"
+          viewTransition
           className="text-ring underline decoration-ring/50 underline-offset-4 hover:decoration-ring"
         >
           ← Back home

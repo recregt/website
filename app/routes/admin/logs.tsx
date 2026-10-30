@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { useNavigation } from 'react-router'
 
 import { Notice } from '~/components/notice'
 import { PageHeader } from '~/components/page-header'
@@ -14,13 +13,13 @@ import {
 } from '~/components/ui/table'
 import { cn } from '~/lib/utils'
 
-import { requireAdmin } from '../../server/session.server'
-import { loadAnalytics, recentRequests } from '../../server/stats.server'
-import { AnalyticsNotice } from '../admin/notice'
-import { parseRange, rangeLabel } from '../admin/ranges'
-import { AdminShell, RangeTabs } from '../admin/shell'
-import { StatusBadge } from '../admin/tables'
-import type { Route } from './+types/admin.logs'
+import { requireAdmin } from '../../../server/session.server'
+import { loadAnalytics, recentRequests } from '../../../server/stats.server'
+import { AnalyticsNotice } from '../../admin/notice'
+import { RangeTabs } from '../../admin/range-tabs'
+import { parseRange, rangeLabel } from '../../admin/ranges'
+import { StatusBadge } from '../../admin/tables'
+import type { Route } from './+types/logs'
 
 const history = 200
 const perPage = 50
@@ -31,33 +30,24 @@ export const meta: Route.MetaFunction = () => [
 ]
 
 export async function loader({ context, request }: Route.LoaderArgs) {
-  const user = requireAdmin(context)
+  requireAdmin(context)
   const range = parseRange(new URL(request.url).searchParams.get('range'))
-  return { range, logs: await loadAnalytics(() => recentRequests(range, history)), user }
+  return { range, logs: await loadAnalytics(() => recentRequests(range, history)) }
 }
 
 type LogRow = Awaited<ReturnType<typeof recentRequests>>[number]
 
-export default function Logs({ loaderData: { range, logs, user } }: Route.ComponentProps) {
-  const loading = useNavigation().state === 'loading'
+export default function Logs({ loaderData: { range, logs } }: Route.ComponentProps) {
   return (
-    <AdminShell user={user} crumb="logs">
-      <div
-        aria-busy={loading}
-        className={cn(
-          'mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 p-6 transition-opacity duration-150',
-          loading && 'opacity-60',
-        )}
-      >
-        <PageHeader
-          eyebrow="Analytics"
-          title="Logs"
-          description={`The latest ${history} requests over ${rangeLabel(range)}.`}
-          actions={<RangeTabs range={range} />}
-        />
-        {logs.ok ? <LogBrowser logs={logs.value} /> : <AnalyticsNotice reason={logs.reason} />}
-      </div>
-    </AdminShell>
+    <>
+      <PageHeader
+        eyebrow="Analytics"
+        title="Logs"
+        description={`The latest ${history} requests over ${rangeLabel(range)}.`}
+        actions={<RangeTabs range={range} />}
+      />
+      {logs.ok ? <LogBrowser logs={logs.value} /> : <AnalyticsNotice reason={logs.reason} />}
+    </>
   )
 }
 
