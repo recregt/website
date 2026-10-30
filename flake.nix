@@ -37,6 +37,9 @@
           check = app "check" [ pkgs.nodejs_24 pkgs.pnpm pkgs.biome ] ''
             pnpm check
           '';
+          screenshots = app "screenshots" [ pkgs.nodejs_24 ] ''
+            CHROMIUM_PATH=${pkgs.lib.getExe pkgs.chromium} exec node scripts/screenshots.ts "$@"
+          '';
         }
       );
 
