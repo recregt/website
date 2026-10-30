@@ -3,7 +3,7 @@ import { z } from 'zod'
 
 import {
   type CredentialJSON,
-  handlePattern,
+  normalizeHandle,
   type Reply,
   type Step,
   type Steps,
@@ -38,7 +38,7 @@ const bodies: { [S in Step]: z.ZodType<Steps[S]['body']> } = {
 
 const handlers: { [S in Step]: Handler<S> } = {
   'registration-begin': async (body, request) => {
-    const handle = normalize(body.handle)
+    const handle = normalizeHandle(body.handle)
     if (!handle) return refuse('invalid_handle')
     if (!(await verifyHuman(body.turnstile, request))) return refuse('not_human')
 
@@ -168,11 +168,6 @@ async function run<S extends Step>(step: S, request: Request): Promise<Response>
 
 function refuse<E extends string>(error: E) {
   return { reply: { ok: false, error } as const, cookies: [] }
-}
-
-function normalize(handle: string): string | null {
-  const normalized = handle.trim().toLowerCase()
-  return handlePattern.test(normalized) ? normalized : null
 }
 
 function isStep(name: string | undefined): name is Step {

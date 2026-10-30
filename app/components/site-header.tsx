@@ -80,6 +80,12 @@ function Account({ user }: { user: User }) {
       <DropdownMenuContent align="end" className="min-w-44">
         <DropdownMenuLabel>Signed in as @{user.handle}</DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/settings" viewTransition className="cursor-pointer">
+            Settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem className="p-0">
           <Form method="post" action="/signout" className="w-full">
             <button

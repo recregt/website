@@ -33,3 +33,10 @@ export type Step = keyof Steps
 export type Reply<S extends Step> = Result<Steps[S]['value'], Steps[S]['error']>
 
 export const handlePattern = /^[a-z0-9][a-z0-9_-]{2,23}$/
+
+export const handleRules = 'Handles are 3 to 24 characters: lowercase letters, digits, - and _.'
+
+export function normalizeHandle(handle: string): string | null {
+  const normalized = handle.trim().toLowerCase()
+  return handlePattern.test(normalized) ? normalized : null
+}

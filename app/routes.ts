@@ -8,6 +8,7 @@ export default [
     index('routes/stats/index.tsx'),
     route('requests', 'routes/stats/requests.tsx'),
   ]),
+  route('settings', 'routes/settings.tsx'),
   route('signout', 'routes/signout.ts'),
   route('auth/:step', 'routes/auth.ts'),
   route('e', 'routes/e.ts'),
