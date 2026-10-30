@@ -3,8 +3,8 @@ import { NavLink, Outlet } from 'react-router'
 import { cn } from '~/lib/utils'
 
 const sections = [
-  { to: '/admin', label: 'Dashboard' },
-  { to: '/admin/logs', label: 'Logs' },
+  { to: '/admin', label: 'Logs' },
+  { to: '/stats', label: 'Stats' },
 ]
 
 export default function AdminLayout() {

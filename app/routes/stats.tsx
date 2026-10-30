@@ -8,50 +8,73 @@ import { Card, CardContent, CardHeader } from '~/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { cn } from '~/lib/utils'
 
-import { requireAccess } from '../../../server/access.server'
-import { loadAnalytics, type SiteStats, siteStats } from '../../../server/stats.server'
-import { Sparkline, seriesTokens, TrafficChart } from '../../admin/chart'
-import { AnalyticsNotice } from '../../admin/notice'
-import { RangeTabs } from '../../admin/range-tabs'
-import { parseRange, type Range, rangeLabel } from '../../admin/ranges'
-import { Ranked, Recent, Slowest } from '../../admin/tables'
-import type { Route } from './+types/dashboard'
+import { listPosts } from '../../server/blog.server'
+import { userContext } from '../../server/session.server'
+import {
+  fullStats,
+  loadAnalytics,
+  publicStats,
+  type SiteStats,
+  type StatsDetails,
+} from '../../server/stats.server'
+import { can } from '../auth/access'
+import { Sparkline, seriesTokens, TrafficChart } from '../stats/chart'
+import { AnalyticsNotice } from '../stats/notice'
+import { RangeTabs } from '../stats/range-tabs'
+import { parseRange, type Range, rangeLabel } from '../stats/ranges'
+import { Ranked, Recent, Slowest } from '../stats/tables'
+import type { Route } from './+types/stats'
 
 export const meta: Route.MetaFunction = () => [
-  { title: 'Admin · recregt' },
-  { name: 'robots', content: 'noindex' },
+  { title: 'Stats · recregt' },
+  { name: 'description', content: 'Public, anonymized traffic numbers for recregt.' },
 ]
 
 export async function loader({ context, request }: Route.LoaderArgs) {
-  requireAccess(context, 'admin')
-  const range = parseRange(new URL(request.url).searchParams.get('range'))
-  return { range, stats: await loadAnalytics(() => siteStats(range)) }
+  const site = new URL(request.url)
+  const range = parseRange(site.searchParams.get('range'))
+  const full = can(context.get(userContext), 'stats:full')
+  const stats = await loadAnalytics<SiteStats>(() =>
+    full ? fullStats(range, site) : publicStats(range, site, publicPages),
+  )
+  return { range, stats }
 }
 
-export default function DashboardPage({ loaderData: { range, stats } }: Route.ComponentProps) {
+async function publicPages(): Promise<string[]> {
+  const posts = await listPosts()
+  return ['/', '/blog', '/stats', ...posts.map((post) => `/blog/${post.slug}`)]
+}
+
+export default function StatsPage({ loaderData: { range, stats } }: Route.ComponentProps) {
   return (
-    <>
-      <PageHeader eyebrow="Analytics" title="Dashboard" actions={<RangeTabs range={range} />} />
-      {stats.ok ? (
-        <Dashboard range={range} stats={stats.value} />
-      ) : (
-        <AnalyticsNotice reason={stats.reason} />
-      )}
-    </>
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
+      <PageHeader
+        eyebrow="Analytics"
+        title="Stats"
+        description={
+          stats.ok && stats.value.details
+            ? `Everything over ${rangeLabel(range)}, live, in UTC.`
+            : `Anonymized traffic over ${rangeLabel(range)}. Complete ${range === '1d' ? 'hours' : 'days'} only, in UTC.`
+        }
+        actions={<RangeTabs range={range} />}
+      />
+      {stats.ok ? <Stats stats={stats.value} /> : <AnalyticsNotice reason={stats.reason} />}
+    </main>
   )
 }
 
-function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
+function Stats({ stats }: { stats: SiteStats }) {
   const points = stats.series.points
   const views = useMemo(() => points.map((point) => point.views), [points])
   const visitors = useMemo(() => points.map((point) => point.visitors), [points])
-  const vitals = stats.performance.vitals
+  const total = stats.totals.views
+  const details = stats.details
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className={cn('grid gap-4 sm:grid-cols-2', details && 'xl:grid-cols-4')}>
         <StatCard
           label="Views"
-          value={stats.totals.views}
+          value={total}
           delta={delta(views)}
           spark={<Sparkline values={views} token={seriesTokens.views} />}
         />
@@ -61,13 +84,16 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
           delta={delta(visitors)}
           spark={<Sparkline values={visitors} token={seriesTokens.visitors} />}
         />
-        <StatCard label="Signed-in views" value={stats.totals.signedIn} delta={null} />
-        <StatCard label="Bot requests" value={stats.totals.bots} delta={null} />
+        {details && (
+          <>
+            <StatCard label="Signed-in views" value={details.signedInViews} delta={null} />
+            <StatCard label="Bot requests" value={details.botRequests} delta={null} />
+          </>
+        )}
       </div>
 
       <Section
         title="Traffic"
-        description={`Views and visitors over ${rangeLabel(range)}, in UTC.`}
         action={
           <span className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
             <span className="size-2 rounded-full bg-chart-1" />
@@ -82,10 +108,10 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Section title="Top pages">
-          <Ranked rows={stats.pages} />
+          <Ranked rows={stats.pages} total={total} />
         </Section>
         <Section title="Referrers">
-          <Ranked rows={stats.referrers} />
+          <Ranked rows={stats.referrers} total={total} />
         </Section>
       </div>
 
@@ -93,52 +119,71 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
         <TabsSection
           title="Audience"
           tabs={[
-            { label: 'Countries', content: <Ranked rows={stats.audience.countries} /> },
-            { label: 'Cities', content: <Ranked rows={stats.audience.cities} /> },
-            { label: 'Languages', content: <Ranked rows={stats.audience.languages} /> },
+            { label: 'Countries', content: <Ranked rows={stats.countries} total={total} /> },
+            ...(details ? detailAudience(details, total) : []),
           ]}
         />
         <TabsSection
           title="Technology"
           tabs={[
-            { label: 'Browsers', content: <Ranked rows={stats.technology.browsers} /> },
-            { label: 'Operating systems', content: <Ranked rows={stats.technology.systems} /> },
-            { label: 'Devices', content: <Ranked rows={stats.technology.devices} /> },
-            { label: 'Screens', content: <Ranked rows={stats.technology.screens} /> },
+            { label: 'Browsers', content: <Ranked rows={stats.browsers} total={total} /> },
+            { label: 'Devices', content: <Ranked rows={stats.devices} total={total} /> },
+            ...(details ? detailTechnology(details, total) : []),
           ]}
         />
       </div>
 
-      <Section title="Performance">
+      <Section title="Performance" description="75th percentile across page views.">
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-3">
-            <Vital label="TTFB" value={vitals.ttfbMs} />
-            <Vital label="FCP" value={vitals.fcpMs} />
-            <Vital label="LCP" value={vitals.lcpMs} />
+            <Vital label="TTFB" value={stats.vitals.ttfbMs} />
+            <Vital label="FCP" value={stats.vitals.fcpMs} />
+            <Vital label="LCP" value={stats.vitals.lcpMs} />
           </div>
-          <div className="border-t border-border pt-4">
-            <p className="pb-2 text-xs text-muted-foreground">Slowest requests</p>
-            <Slowest rows={stats.performance.slowest} />
-          </div>
+          {details && (
+            <div className="border-t border-border pt-4">
+              <p className="pb-2 text-xs text-muted-foreground">Slowest requests</p>
+              <Slowest rows={details.slowest} />
+            </div>
+          )}
         </div>
       </Section>
 
-      <Section
-        title="Recent requests"
-        action={
-          <Link
-            to="/admin/logs"
-            viewTransition
-            className="font-mono text-xs text-muted-foreground hover:text-foreground"
-          >
-            View all →
-          </Link>
-        }
-      >
-        <Recent rows={stats.recent} />
-      </Section>
+      {details && (
+        <Section
+          title="Recent requests"
+          action={
+            <Link
+              to="/admin"
+              viewTransition
+              className="font-mono text-xs text-muted-foreground hover:text-foreground"
+            >
+              View all →
+            </Link>
+          }
+        >
+          <Recent rows={details.recent} />
+        </Section>
+      )}
     </>
   )
+}
+
+function detailAudience(details: StatsDetails, total: number) {
+  return [
+    { label: 'Cities', content: <Ranked rows={details.cities} total={total} /> },
+    { label: 'Languages', content: <Ranked rows={details.languages} total={total} /> },
+  ]
+}
+
+function detailTechnology(details: StatsDetails, total: number) {
+  return [
+    { label: 'Operating systems', content: <Ranked rows={details.systems} total={total} /> },
+    {
+      label: 'Screens',
+      content: <Ranked rows={details.screens.rows} total={details.screens.measuredViews} />,
+    },
+  ]
 }
 
 function StatCard({

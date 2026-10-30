@@ -15,11 +15,11 @@ import { cn } from '~/lib/utils'
 
 import { requireAccess } from '../../../server/access.server'
 import { loadAnalytics, recentRequests } from '../../../server/stats.server'
-import { AnalyticsNotice } from '../../admin/notice'
-import { RangeTabs } from '../../admin/range-tabs'
-import { parseRange, rangeLabel } from '../../admin/ranges'
-import { StatusBadge } from '../../admin/tables'
-import type { Route } from './+types/logs'
+import { AnalyticsNotice } from '../../stats/notice'
+import { RangeTabs } from '../../stats/range-tabs'
+import { parseRange, rangeLabel } from '../../stats/ranges'
+import { StatusBadge } from '../../stats/tables'
+import type { Route } from './+types/index'
 
 const history = 200
 const perPage = 50

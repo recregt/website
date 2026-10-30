@@ -30,6 +30,13 @@ export function SiteHeader({ user }: { user: User | null }) {
           >
             Blog
           </Link>
+          <Link
+            to="/stats"
+            viewTransition
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Stats
+          </Link>
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

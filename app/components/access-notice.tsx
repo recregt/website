@@ -9,6 +9,7 @@ import { signInHref } from '../auth/next'
 
 const roles: Record<Capability, string> = {
   admin: 'an administrator',
+  'stats:full': 'an administrator',
 }
 
 export function SignInRequired() {
