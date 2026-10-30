@@ -14,7 +14,6 @@ import {
 import { cn } from '~/lib/utils'
 
 import type { User } from '../../server/schema.server'
-import { can } from '../auth/access'
 import { signInHref } from '../auth/next'
 
 export function SiteHeader({ user }: { user: User | null }) {
@@ -80,16 +79,6 @@ function Account({ user }: { user: User }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44">
         <DropdownMenuLabel>Signed in as @{user.handle}</DropdownMenuLabel>
-        {can(user, 'admin') && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/admin" viewTransition className="cursor-pointer">
-                Admin
-              </Link>
-            </DropdownMenuItem>
-          </>
-        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem className="p-0">
           <Form method="post" action="/signout" className="w-full">

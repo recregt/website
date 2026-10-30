@@ -16,15 +16,13 @@ export function Section({
   children: ReactNode
 }) {
   return (
-    <section
-      className={cn('flex flex-col gap-4 rounded-xl border border-border bg-card p-5', className)}
-    >
-      <div className="flex items-start justify-between gap-3">
+    <section className={cn('flex flex-col gap-3', className)}>
+      <div className="flex items-end justify-between gap-3 border-b border-border pb-2">
         <div>
           <h2 className="text-sm font-medium">{title}</h2>
-          {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+          {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
         </div>
-        {action}
+        {action && <div className="text-sm text-muted-foreground">{action}</div>}
       </div>
       {children}
     </section>
