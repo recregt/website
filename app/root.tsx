@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import {
   isRouteErrorResponse,
   Link,
@@ -30,17 +29,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation()
   const standalone = pathname.startsWith('/admin')
 
-  useEffect(() => {
-    const media = matchMedia('(prefers-color-scheme: dark)')
-    const sync = () =>
-      document.documentElement.classList.toggle('dark', standalone || media.matches)
-    sync()
-    media.addEventListener('change', sync)
-    return () => media.removeEventListener('change', sync)
-  }, [standalone])
-
   return (
-    <html lang="en" className={standalone ? 'dark' : undefined}>
+    <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

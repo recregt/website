@@ -31,7 +31,7 @@ export function SiteHeader({ user }: { user: User | null }) {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-xs text-zinc-200 transition-colors hover:bg-muted"
+                  className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-xs transition-colors hover:bg-muted"
                 >
                   @{user.handle}
                   <ChevronDown className="size-3.5 opacity-60" />
@@ -54,7 +54,7 @@ export function SiteHeader({ user }: { user: User | null }) {
                   <Form method="post" action="/signout" className="w-full">
                     <button
                       type="submit"
-                      className="w-full cursor-pointer px-2 py-1.5 text-left text-rose-400 hover:text-rose-300"
+                      className="w-full cursor-pointer px-2 py-1.5 text-left text-destructive"
                     >
                       Sign out
                     </button>

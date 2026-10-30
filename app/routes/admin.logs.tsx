@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigation } from 'react-router'
 
+import { Notice } from '~/components/notice'
+import { PageHeader } from '~/components/page-header'
 import { Input } from '~/components/ui/input'
 import {
   Table,
@@ -47,18 +49,12 @@ export default function Logs({ loaderData: { range, logs, user } }: Route.Compon
           loading && 'opacity-60',
         )}
       >
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
-              Analytics
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight">Logs</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              The latest {history} requests over {rangeLabel(range)}.
-            </p>
-          </div>
-          <RangeTabs range={range} />
-        </div>
+        <PageHeader
+          eyebrow="Analytics"
+          title="Logs"
+          description={`The latest ${history} requests over ${rangeLabel(range)}.`}
+          actions={<RangeTabs range={range} />}
+        />
         {logs.ok ? <LogBrowser logs={logs.value} /> : <AnalyticsNotice reason={logs.reason} />}
       </div>
     </AdminShell>
@@ -143,13 +139,7 @@ function LogBrowser({ logs }: { logs: LogRow[] }) {
         </div>
       </div>
 
-      {rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border/60 py-10">
-          <p className="font-mono text-xs text-muted-foreground">No matching requests</p>
-        </div>
-      ) : (
-        <LogTable rows={rows} />
-      )}
+      {rows.length === 0 ? <Notice>No matching requests</Notice> : <LogTable rows={rows} />}
     </>
   )
 }

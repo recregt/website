@@ -3,9 +3,12 @@ import 'uplot/dist/uPlot.min.css'
 import { useEffect, useRef } from 'react'
 import uPlot from 'uplot'
 
+import { useTheme } from '~/hooks/use-theme'
+
 import type { SiteStats } from '../../server/stats.server'
 
 const height = 320
+const sparklineHeight = 36
 const axisFont = '10px "Geist Mono Variable", monospace'
 
 const tickFormats = {
@@ -18,23 +21,20 @@ const tickFormats = {
   day: new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
 }
 
-export const seriesColors = { views: '#10b981', visitors: '#94a3b8' }
+export const seriesTokens = { views: '--chart-1', visitors: '--chart-2' } as const
+type Token = (typeof seriesTokens)[keyof typeof seriesTokens]
 
 export function TrafficChart({ series: { step, points } }: { series: SiteStats['series'] }) {
   const container = useRef<HTMLDivElement>(null)
+  const theme = useTheme()
 
   useEffect(() => {
     const element = container.current
     if (!element || points.length === 0) return
-    const data: uPlot.AlignedData = [
-      points.map((point) => point.time),
-      points.map((point) => point.views),
-      points.map((point) => point.visitors),
-    ]
     const axis: uPlot.Axis = {
-      stroke: 'rgba(255, 255, 255, 0.1)',
-      grid: { stroke: 'rgba(255, 255, 255, 0.04)', width: 1 },
-      ticks: { stroke: 'rgba(255, 255, 255, 0.62)', width: 1 },
+      stroke: theme('--muted-foreground'),
+      grid: { stroke: theme('--border'), width: 1 },
+      ticks: { stroke: theme('--border'), width: 1 },
       font: axisFont,
       size: 44,
     }
@@ -59,43 +59,43 @@ export function TrafficChart({ series: { step, points } }: { series: SiteStats['
         series: [
           {},
           {
-            stroke: seriesColors.views,
+            stroke: theme(seriesTokens.views),
             width: 2,
             paths: uPlot.paths.spline?.(),
-            fill: (chart) => fillGradient(chart, seriesColors.views, 0.18),
+            fill: (chart) => fade(chart, theme(seriesTokens.views), 18),
           },
           {
-            stroke: seriesColors.visitors,
+            stroke: theme(seriesTokens.visitors),
             width: 2,
             paths: uPlot.paths.spline?.(),
           },
         ],
       },
-      data,
+      [
+        points.map((point) => point.time),
+        points.map((point) => point.views),
+        points.map((point) => point.visitors),
+      ],
       element,
     )
-    const resize = new ResizeObserver(() => chart.setSize({ width: element.clientWidth, height }))
-    resize.observe(element)
-    document.fonts.ready.then(() => chart.redraw(false, true)).catch(() => {})
-    return () => {
-      resize.disconnect()
-      chart.destroy()
-    }
-  }, [step, points])
+    return follow(element, chart, height)
+  }, [step, points, theme])
 
   return <div ref={container} className="h-80 w-full" />
 }
 
-export function Sparkline({ values, color }: { values: number[]; color: string }) {
+export function Sparkline({ values, token }: { values: number[]; token: Token }) {
   const container = useRef<HTMLDivElement>(null)
+  const theme = useTheme()
 
   useEffect(() => {
     const element = container.current
     if (!element || values.length === 0) return
+    const color = theme(token)
     const chart = new uPlot(
       {
         width: element.clientWidth,
-        height: 36,
+        height: sparklineHeight,
         padding: [2, 0, 2, 0],
         cursor: { show: false },
         legend: { show: false },
@@ -106,38 +106,40 @@ export function Sparkline({ values, color }: { values: number[]; color: string }
             stroke: color,
             width: 1.5,
             paths: uPlot.paths.spline?.(),
-            fill: (chart) => fillGradient(chart, color, 0.22),
+            fill: (chart) => fade(chart, color, 22),
           },
         ],
       },
       [values.map((_, index) => index), values],
       element,
     )
-    const resize = new ResizeObserver(() =>
-      chart.setSize({ width: element.clientWidth, height: 36 }),
-    )
-    resize.observe(element)
-    document.fonts.ready.then(() => chart.redraw(false, true)).catch(() => {})
-    return () => {
-      resize.disconnect()
-      chart.destroy()
-    }
-  }, [values, color])
+    return follow(element, chart, sparklineHeight)
+  }, [values, token, theme])
 
   return <div ref={container} className="h-9 w-full" />
 }
 
-function fillGradient(chart: uPlot, color: string, alpha: number) {
-  const gradient = chart.ctx.createLinearGradient(0, 0, 0, chart.bbox.height / devicePixelRatio)
-  gradient.addColorStop(0, withAlpha(color, alpha))
-  gradient.addColorStop(1, withAlpha(color, 0))
-  return gradient
+function follow(element: HTMLElement, chart: uPlot, chartHeight: number) {
+  const resize = new ResizeObserver(() =>
+    chart.setSize({ width: element.clientWidth, height: chartHeight }),
+  )
+  resize.observe(element)
+  document.fonts.ready.then(() => chart.redraw(false, true)).catch(() => {})
+  return () => {
+    resize.disconnect()
+    chart.destroy()
+  }
 }
 
-function withAlpha(hex: string, alpha: number): string {
-  const value = hex.replace('#', '')
-  const red = Number.parseInt(value.slice(0, 2), 16)
-  const green = Number.parseInt(value.slice(2, 4), 16)
-  const blue = Number.parseInt(value.slice(4, 6), 16)
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+function fade(chart: uPlot, color: string, percent: number) {
+  const context = chart.ctx
+  context.fillStyle = color
+  const opaque = String(context.fillStyle)
+  const alpha = Math.round((percent / 100) * 255)
+    .toString(16)
+    .padStart(2, '0')
+  const gradient = context.createLinearGradient(0, 0, 0, chart.bbox.height / devicePixelRatio)
+  gradient.addColorStop(0, `${opaque}${alpha}`)
+  gradient.addColorStop(1, `${opaque}00`)
+  return gradient
 }

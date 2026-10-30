@@ -76,11 +76,11 @@ export function StatusBadge({ status }: { status: number }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2 py-0.5 text-xs tabular-nums text-zinc-200',
-        ok ? 'border-emerald-500/20' : 'border-rose-500/20',
+        'inline-flex items-center gap-1.5 rounded-full border bg-muted px-2 py-0.5 text-xs tabular-nums',
+        ok ? 'border-success/20' : 'border-destructive/20',
       )}
     >
-      <span className={cn('size-1.5 rounded-full', ok ? 'bg-emerald-400' : 'bg-rose-400')} />
+      <span className={cn('size-1.5 rounded-full', ok ? 'bg-success' : 'bg-destructive')} />
       {status}
     </span>
   )
@@ -89,15 +89,13 @@ export function StatusBadge({ status }: { status: number }) {
 function Bar({ share }: { share: number }) {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="h-1 w-24 overflow-hidden rounded-full bg-[#1f2023]">
+      <div className="h-1 w-24 overflow-hidden rounded-full bg-muted">
         <div
-          className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
+          className="h-full rounded-full bg-chart-1 transition-[width] duration-300"
           style={{ width: `${share * 100}%` }}
         />
       </div>
-      <span className="w-10 text-right text-xs tabular-nums text-zinc-200">
-        {Math.round(share * 100)}%
-      </span>
+      <span className="w-10 text-right text-xs tabular-nums">{Math.round(share * 100)}%</span>
     </div>
   )
 }

@@ -2,13 +2,15 @@ import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import { type ReactNode, useMemo } from 'react'
 import { Link, useNavigation } from 'react-router'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
+import { PageHeader } from '~/components/page-header'
+import { Section } from '~/components/section'
+import { Card, CardContent, CardHeader } from '~/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { cn } from '~/lib/utils'
 
 import { requireAdmin } from '../../server/session.server'
 import { loadAnalytics, type SiteStats, siteStats } from '../../server/stats.server'
-import { Sparkline, seriesColors, TrafficChart } from '../admin/chart'
+import { Sparkline, seriesTokens, TrafficChart } from '../admin/chart'
 import { AnalyticsNotice } from '../admin/notice'
 import { parseRange, type Range, rangeLabel } from '../admin/ranges'
 import { AdminShell, RangeTabs } from '../admin/shell'
@@ -37,15 +39,7 @@ export default function Admin({ loaderData: { range, stats, user } }: Route.Comp
           loading && 'opacity-60',
         )}
       >
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
-              Analytics
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-          </div>
-          <RangeTabs range={range} />
-        </div>
+        <PageHeader eyebrow="Analytics" title="Dashboard" actions={<RangeTabs range={range} />} />
         {stats.ok ? (
           <Dashboard range={range} stats={stats.value} />
         ) : (
@@ -68,134 +62,89 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
           label="Views"
           value={stats.totals.views}
           delta={delta(views)}
-          spark={{ values: views, color: seriesColors.views }}
+          spark={<Sparkline values={views} token={seriesTokens.views} />}
         />
         <StatCard
           label="Visitors"
           value={stats.totals.visitors}
           delta={delta(visitors)}
-          spark={{ values: visitors, color: seriesColors.visitors }}
+          spark={<Sparkline values={visitors} token={seriesTokens.visitors} />}
         />
         <StatCard label="Signed-in views" value={stats.totals.signedIn} delta={null} />
         <StatCard label="Bot requests" value={stats.totals.bots} delta={null} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <CardTitle className="font-sans">Traffic</CardTitle>
-            <span className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-              <span
-                className="size-2 rounded-full"
-                style={{ backgroundColor: seriesColors.views }}
-              />
-              Views
-              <span
-                className="ml-2 size-2 rounded-full"
-                style={{ backgroundColor: seriesColors.visitors }}
-              />
-              Visitors
-            </span>
-          </div>
-          <CardDescription>Views and visitors over {rangeLabel(range)}, in UTC.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TrafficChart series={stats.series} />
-        </CardContent>
-      </Card>
+      <Section
+        title="Traffic"
+        description={`Views and visitors over ${rangeLabel(range)}, in UTC.`}
+        action={
+          <span className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+            <span className="size-2 rounded-full bg-chart-1" />
+            Views
+            <span className="ml-2 size-2 rounded-full bg-chart-2" />
+            Visitors
+          </span>
+        }
+      >
+        <TrafficChart series={stats.series} />
+      </Section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <SectionCard title="Top pages">
+        <Section title="Top pages">
           <Ranked rows={stats.pages} />
-        </SectionCard>
-        <SectionCard title="Referrers">
+        </Section>
+        <Section title="Referrers">
           <Ranked rows={stats.referrers} />
-        </SectionCard>
+        </Section>
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        <TabsCard
+        <TabsSection
           title="Audience"
-          defaultValue="countries"
           tabs={[
-            {
-              value: 'countries',
-              label: 'Countries',
-              content: <Ranked rows={stats.audience.countries.slice(0, 7)} />,
-            },
-            {
-              value: 'cities',
-              label: 'Cities',
-              content: <Ranked rows={stats.audience.cities.slice(0, 7)} />,
-            },
-            {
-              value: 'languages',
-              label: 'Languages',
-              content: <Ranked rows={stats.audience.languages.slice(0, 7)} />,
-            },
+            { label: 'Countries', content: <Ranked rows={stats.audience.countries} /> },
+            { label: 'Cities', content: <Ranked rows={stats.audience.cities} /> },
+            { label: 'Languages', content: <Ranked rows={stats.audience.languages} /> },
           ]}
         />
-        <TabsCard
+        <TabsSection
           title="Technology"
-          defaultValue="browsers"
           tabs={[
-            {
-              value: 'browsers',
-              label: 'Browsers',
-              content: <Ranked rows={stats.technology.browsers.slice(0, 7)} />,
-            },
-            {
-              value: 'systems',
-              label: 'Operating systems',
-              content: <Ranked rows={stats.technology.systems.slice(0, 7)} />,
-            },
-            {
-              value: 'devices',
-              label: 'Devices',
-              content: <Ranked rows={stats.technology.devices.slice(0, 7)} />,
-            },
-            {
-              value: 'screens',
-              label: 'Screens',
-              content: <Ranked rows={stats.technology.screens.slice(0, 7)} />,
-            },
+            { label: 'Browsers', content: <Ranked rows={stats.technology.browsers} /> },
+            { label: 'Operating systems', content: <Ranked rows={stats.technology.systems} /> },
+            { label: 'Devices', content: <Ranked rows={stats.technology.devices} /> },
+            { label: 'Screens', content: <Ranked rows={stats.technology.screens} /> },
           ]}
         />
       </div>
 
-      <Card>
-        <CardHeader className="p-4 pb-3">
-          <CardTitle className="font-sans text-sm">Performance</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4 p-4 pt-0">
+      <Section title="Performance">
+        <div className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-3">
-            <MiniVital label="TTFB" value={ms(vitals.ttfbMs)} />
-            <MiniVital label="FCP" value={ms(vitals.fcpMs)} />
-            <MiniVital label="LCP" value={ms(vitals.lcpMs)} />
+            <Vital label="TTFB" value={vitals.ttfbMs} />
+            <Vital label="FCP" value={vitals.fcpMs} />
+            <Vital label="LCP" value={vitals.lcpMs} />
           </div>
-          <div className="border-t border-border/40 pt-4">
-            <p className="pb-2 text-xs font-normal text-muted-foreground">Slowest requests</p>
+          <div className="border-t border-border pt-4">
+            <p className="pb-2 text-xs text-muted-foreground">Slowest requests</p>
             <Slowest rows={stats.performance.slowest} />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </Section>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="font-sans">Recent requests</CardTitle>
-            <Link
-              to="/admin/logs"
-              className="flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground"
-            >
-              View all →
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Recent rows={stats.recent} />
-        </CardContent>
-      </Card>
+      <Section
+        title="Recent requests"
+        action={
+          <Link
+            to="/admin/logs"
+            className="font-mono text-xs text-muted-foreground hover:text-foreground"
+          >
+            View all →
+          </Link>
+        }
+      >
+        <Recent rows={stats.recent} />
+      </Section>
     </>
   )
 }
@@ -209,24 +158,20 @@ function StatCard({
   label: string
   value: number
   delta: number | null
-  spark?: { values: number[]; color: string }
+  spark?: ReactNode
 }) {
   return (
-    <Card className="ring-border transition-shadow hover:ring-emerald-500/30">
+    <Card className="transition-shadow hover:ring-ring/30">
       <CardHeader className="p-4">
         <div className="flex items-start justify-between gap-2">
           <p className="text-xs text-muted-foreground">{label}</p>
           <Trend value={change} />
         </div>
-        <p className="text-2xl font-semibold tracking-tight text-zinc-100 tabular-nums">
+        <p className="text-2xl font-semibold tracking-tight tabular-nums">
           {value.toLocaleString()}
         </p>
       </CardHeader>
-      {spark && (
-        <CardContent className="px-4 pb-4 pt-0">
-          <Sparkline values={spark.values} color={spark.color} />
-        </CardContent>
-      )}
+      {spark && <CardContent className="px-4 pt-0 pb-4">{spark}</CardContent>}
     </Card>
   )
 }
@@ -239,7 +184,7 @@ function Trend({ value }: { value: number | null }) {
     <span
       className={cn(
         'flex items-center gap-0.5 text-xs tabular-nums',
-        up ? 'text-emerald-400' : 'text-rose-400',
+        up ? 'text-success' : 'text-destructive',
       )}
       title="Second half vs first half of the range"
     >
@@ -249,73 +194,52 @@ function Trend({ value }: { value: number | null }) {
   )
 }
 
-function MiniVital({ label, value }: { label: string; value: string }) {
+function Vital({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="rounded-md border border-border bg-muted/40 p-3">
       <p className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold tabular-nums text-zinc-100">{value}</p>
+      <p className="mt-1 text-lg font-semibold tabular-nums">
+        {value === null ? '—' : `${Math.round(value)} ms`}
+      </p>
     </div>
   )
 }
 
-function SectionCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="p-4 pb-3">
-        <CardTitle className="font-sans text-sm">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-1 flex-col p-4 pt-0">
-        <div className="space-y-6">{children}</div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function TabsCard({
+function TabsSection({
   title,
-  defaultValue,
   tabs,
 }: {
   title: string
-  defaultValue: string
-  tabs: { value: string; label: string; content: ReactNode }[]
+  tabs: { label: string; content: ReactNode }[]
 }) {
   return (
-    <Card>
-      <Tabs defaultValue={defaultValue} className="gap-0">
-        <CardHeader className="p-4 pb-3">
-          <CardTitle className="font-sans text-sm">{title}</CardTitle>
-          <TabsList className="mt-2 h-8 rounded-md bg-[#1f2023] p-1">
-            {tabs.map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className="font-mono text-xs font-medium data-active:bg-[#26272b] data-active:text-zinc-100 data-active:shadow-sm"
-              >
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
+    <Section title={title}>
+      <Tabs defaultValue={tabs[0]?.label}>
+        <TabsList>
+          {tabs.map((tab) => (
+            <TabsTrigger key={tab.label} value={tab.label} className="font-mono text-xs">
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <div className="grid">
           {tabs.map((tab) => (
             <TabsContent
-              key={tab.value}
-              value={tab.value}
-              className="h-[320px] flex flex-col overflow-y-auto"
+              key={tab.label}
+              value={tab.label}
+              forceMount
+              className="[grid-area:1/1] data-[state=inactive]:invisible"
             >
               {tab.content}
             </TabsContent>
           ))}
-        </CardContent>
+        </div>
       </Tabs>
-    </Card>
+    </Section>
   )
 }
-
-const ms = (value: number | null) => (value === null ? '—' : `${Math.round(value)} ms`)
 
 function delta(values: number[]): number | null {
   const half = Math.floor(values.length / 2)

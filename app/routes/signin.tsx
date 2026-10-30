@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { redirect, useNavigate } from 'react-router'
 
+import { PageHeader } from '~/components/page-header'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
@@ -70,12 +71,10 @@ export default function SignIn({ loaderData: { siteKey } }: Route.ComponentProps
   if (recovery) {
     return (
       <main className="mx-auto max-w-md px-6 py-20">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight">
-          Save your recovery code
-        </h1>
-        <p className="mt-3 text-muted-foreground">
-          It is the only way back in if you lose every device with your passkey.
-        </p>
+        <PageHeader
+          title="Save your recovery code"
+          description="It is the only way back in if you lose every device with your passkey."
+        />
         <pre className="mt-6 overflow-x-auto rounded-lg border border-border bg-muted p-4 font-mono text-sm">
           {recovery.code}
         </pre>
@@ -97,7 +96,7 @@ export default function SignIn({ loaderData: { siteKey } }: Route.ComponentProps
 
   return (
     <main className="mx-auto max-w-md px-6 py-20">
-      <h1 className="font-heading text-3xl font-semibold tracking-tight">Sign in</h1>
+      <PageHeader title="Sign in" />
       <Card className="mt-6">
         <CardContent className="space-y-4">
           <Button className="w-full" disabled={busy} onClick={signIn}>

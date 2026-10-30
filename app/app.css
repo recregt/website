@@ -5,7 +5,7 @@
 @import "@fontsource-variable/geist-mono";
 @import "@fontsource-variable/newsreader/opsz-italic.css";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
 @theme inline {
   --font-heading: var(--font-serif);
@@ -29,6 +29,7 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -53,6 +54,7 @@
 }
 
 :root {
+  color-scheme: light dark;
   --background: #ffffff;
   --foreground: #09090b;
   --card: #ffffff;
@@ -67,12 +69,13 @@
   --muted-foreground: #71717a;
   --accent: #f4f4f5;
   --accent-foreground: #09090b;
-  --destructive: #ef4444;
+  --destructive: #dc2626;
+  --success: #047857;
   --border: #e4e4e7;
   --input: #e4e4e7;
-  --ring: #52525b;
-  --chart-1: #10b981;
-  --chart-2: #71717a;
+  --ring: #047857;
+  --chart-1: #059669;
+  --chart-2: #64748b;
   --chart-3: #52525b;
   --chart-4: #a1a1aa;
   --chart-5: #18181b;
@@ -104,6 +107,7 @@
     --accent: #1f2023;
     --accent-foreground: #f4f4f5;
     --destructive: #f43f5e;
+    --success: #34d399;
     --border: #26272b;
     --input: #26272b;
     --ring: #10b981;
@@ -121,41 +125,6 @@
     --sidebar-border: #26272b;
     --sidebar-ring: #10b981;
   }
-}
-
-.dark {
-  color-scheme: dark;
-  --background: #0e0f11;
-  --foreground: #f4f4f5;
-  --card: #161719;
-  --card-foreground: #f4f4f5;
-  --popover: #161719;
-  --popover-foreground: #f4f4f5;
-  --primary: #f4f4f5;
-  --primary-foreground: #0e0f11;
-  --secondary: #1f2023;
-  --secondary-foreground: #f4f4f5;
-  --muted: #1f2023;
-  --muted-foreground: #8b8d94;
-  --accent: #1f2023;
-  --accent-foreground: #f4f4f5;
-  --destructive: #f43f5e;
-  --border: #26272b;
-  --input: #26272b;
-  --ring: #10b981;
-  --chart-1: #10b981;
-  --chart-2: #94a3b8;
-  --chart-3: #34d399;
-  --chart-4: #60a5fa;
-  --chart-5: #22d3ee;
-  --sidebar: #0e0f11;
-  --sidebar-foreground: #f4f4f5;
-  --sidebar-primary: #10b981;
-  --sidebar-primary-foreground: #0e0f11;
-  --sidebar-accent: #1f2023;
-  --sidebar-accent-foreground: #f4f4f5;
-  --sidebar-border: #26272b;
-  --sidebar-ring: #10b981;
 }
 
 @layer base {
