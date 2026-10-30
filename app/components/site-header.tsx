@@ -72,9 +72,9 @@ function Account({ user }: { user: User }) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 font-medium transition-colors hover:bg-muted"
+          className="inline-flex min-w-0 items-center gap-1 rounded-md px-2.5 py-1.5 font-medium transition-colors hover:bg-muted"
         >
-          @{user.handle}
+          <span className="max-w-32 truncate">@{user.handle}</span>
           <ChevronDown className="size-3.5 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>

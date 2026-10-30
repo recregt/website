@@ -164,7 +164,7 @@ async function details({ window, views }: Scope, own: string) {
       z.object({ views: count }),
     ),
     query(
-      `SELECT ${request.path} AS name, AVG(${request.durationMs}) AS ms, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${since} AND ${request.durationMs} > 0 AND ${sitePage} GROUP BY name ORDER BY ms DESC LIMIT ${listSize}`,
+      `SELECT ${request.path} AS name, AVG(${request.durationMs}) AS ms, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${views} AND ${request.durationMs} > 0 GROUP BY name ORDER BY ms DESC LIMIT ${listSize}`,
       z.object({ name: z.string(), ms: count, count }),
     ),
     requestLog(since, listSize),

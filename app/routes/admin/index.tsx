@@ -1,7 +1,10 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import { Notice } from '~/components/notice'
 import { PageHeader } from '~/components/page-header'
+import { Segmented } from '~/components/segmented'
+import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 import {
   Table,
@@ -11,7 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from '~/components/ui/table'
-import { cn } from '~/lib/utils'
 
 import { requireAccess } from '../../../server/access.server'
 import { loadAnalytics, recentRequests } from '../../../server/stats.server'
@@ -87,43 +89,48 @@ function LogBrowser({ logs }: { logs: LogRow[] }) {
           onChange={(event) => update(setSearch)(event.target.value)}
           className="w-64"
         />
-        <div className="flex items-center gap-1">
-          {['all', '2', '4', '5'].map((option) => (
-            <FilterButton
-              key={option}
-              active={status === option}
-              onClick={() => update(setStatus)(option)}
-            >
-              {option === 'all' ? 'All' : `${option}xx`}
-            </FilterButton>
-          ))}
-        </div>
-        <div className="flex items-center gap-1">
-          <FilterButton active={kind === 'all'} onClick={() => update(setKind)('all')}>
-            All
-          </FilterButton>
-          {kinds.map((option) => (
-            <FilterButton
-              key={option}
-              active={kind === option}
-              onClick={() => update(setKind)(option)}
-            >
-              {option}
-            </FilterButton>
-          ))}
-        </div>
-        <div className="ml-auto flex items-center gap-3 font-mono text-xs text-muted-foreground">
+        <Segmented
+          label="Status"
+          value={status}
+          onChange={update(setStatus)}
+          options={['all', '2', '4', '5'].map((option) => ({
+            value: option,
+            label: option === 'all' ? 'All statuses' : `${option}xx`,
+          }))}
+        />
+        <Segmented
+          label="Kind"
+          value={kind}
+          onChange={update(setKind)}
+          options={[
+            { value: 'all', label: 'All kinds' },
+            ...kinds.map((option) => ({ value: option, label: option })),
+          ]}
+        />
+        <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
           <span className="tabular-nums">
             {filtered.length === 0 ? 0 : current * perPage + 1}–
             {Math.min((current + 1) * perPage, filtered.length)} of {filtered.length}
           </span>
           <div className="flex items-center gap-1">
-            <PageButton disabled={current === 0} onClick={() => setPage(current - 1)}>
-              ←
-            </PageButton>
-            <PageButton disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>
-              →
-            </PageButton>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Previous page"
+              disabled={current === 0}
+              onClick={() => setPage(current - 1)}
+            >
+              <ChevronLeft />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Next page"
+              disabled={current >= pages - 1}
+              onClick={() => setPage(current + 1)}
+            >
+              <ChevronRight />
+            </Button>
           </div>
         </div>
       </div>
@@ -135,16 +142,16 @@ function LogBrowser({ logs }: { logs: LogRow[] }) {
 
 function LogTable({ rows }: { rows: LogRow[] }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Time</TableHead>
+            <TableHead>Time (UTC)</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Kind</TableHead>
             <TableHead>Path</TableHead>
             <TableHead>IP</TableHead>
-            <TableHead>Duration</TableHead>
+            <TableHead className="text-right">Duration</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -156,62 +163,18 @@ function LogTable({ rows }: { rows: LogRow[] }) {
               <TableCell>
                 <StatusBadge status={row.status} />
               </TableCell>
-              <TableCell className="font-mono text-xs text-muted-foreground">{row.kind}</TableCell>
+              <TableCell className="text-muted-foreground">{row.kind}</TableCell>
               <TableCell>
                 <span className="block max-w-96 truncate font-mono text-xs">{row.path}</span>
               </TableCell>
               <TableCell className="font-mono text-xs text-muted-foreground">{row.ip}</TableCell>
-              <TableCell className="tabular-nums">{Math.round(row.durationMs)} ms</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {Math.round(row.durationMs)} ms
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
     </div>
-  )
-}
-
-function FilterButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'rounded-md border px-2.5 py-1 font-mono text-xs transition-colors',
-        active
-          ? 'border-border bg-muted text-foreground'
-          : 'border-transparent text-muted-foreground hover:text-foreground',
-      )}
-    >
-      {children}
-    </button>
-  )
-}
-
-function PageButton({
-  disabled,
-  onClick,
-  children,
-}: {
-  disabled: boolean
-  onClick: () => void
-  children: string
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className="flex size-6 items-center justify-center rounded-md border border-border text-xs transition-colors hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent"
-    >
-      {children}
-    </button>
   )
 }
