@@ -123,7 +123,7 @@ function Stats({ stats }: { stats: SiteStats }) {
 
       {details && (
         <>
-          <Section title="Slowest requests" description="Average response time per path.">
+          <Section title="Slowest pages" description="Average response time per page view.">
             <SlowestTable rows={details.slowest} />
           </Section>
           <Section
