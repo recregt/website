@@ -9,11 +9,15 @@ import {
   useRouteLoaderData,
 } from 'react-router'
 
+import { AccessDenied, SignInRequired } from '~/components/access-notice'
+import { PageHeader } from '~/components/page-header'
 import { SiteHeader } from '~/components/site-header'
 
+import type { User } from '../server/schema.server'
 import { sessionMiddleware, userContext } from '../server/session.server'
 import type { Route } from './+types/root'
 import { useEngagement } from './analytics/engagement'
+import { deniedCapability } from './auth/access'
 import './app.css'
 
 export const middleware: Route.MiddlewareFunction[] = [sessionMiddleware]
@@ -48,12 +52,29 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  const notFound = isRouteErrorResponse(error) && error.status === 404
+  const user = useRouteLoaderData<typeof loader>('root')?.user ?? null
   return (
-    <main className="mx-auto max-w-2xl px-6 py-20">
-      <h1 className="font-heading text-3xl font-semibold tracking-tight">
-        {notFound ? 'Not found' : 'Something went wrong'}
-      </h1>
+    <main className="mx-auto max-w-md px-6 py-20">
+      <ErrorContent error={error} user={user} />
+    </main>
+  )
+}
+
+function ErrorContent({ error, user }: { error: unknown; user: User | null }) {
+  if (isRouteErrorResponse(error)) {
+    const capability = deniedCapability(error.data)
+    if (error.status === 401 && capability) return <SignInRequired />
+    if (error.status === 403 && capability && user)
+      return <AccessDenied user={user} capability={capability} />
+    if (error.status === 404) return <Problem title="Not found" />
+  }
+  return <Problem title="Something went wrong" />
+}
+
+function Problem({ title }: { title: string }) {
+  return (
+    <>
+      <PageHeader title={title} />
       <p className="mt-6 font-mono text-sm">
         <Link
           to="/"
@@ -63,6 +84,6 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
           ← Back home
         </Link>
       </p>
-    </main>
+    </>
   )
 }

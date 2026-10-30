@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader } from '~/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { cn } from '~/lib/utils'
 
-import { requireAdmin } from '../../../server/session.server'
+import { requireAccess } from '../../../server/access.server'
 import { loadAnalytics, type SiteStats, siteStats } from '../../../server/stats.server'
 import { Sparkline, seriesTokens, TrafficChart } from '../../admin/chart'
 import { AnalyticsNotice } from '../../admin/notice'
@@ -23,7 +23,7 @@ export const meta: Route.MetaFunction = () => [
 ]
 
 export async function loader({ context, request }: Route.LoaderArgs) {
-  requireAdmin(context)
+  requireAccess(context, 'admin')
   const range = parseRange(new URL(request.url).searchParams.get('range'))
   return { range, stats: await loadAnalytics(() => siteStats(range)) }
 }

@@ -13,7 +13,7 @@ import {
 } from '~/components/ui/table'
 import { cn } from '~/lib/utils'
 
-import { requireAdmin } from '../../../server/session.server'
+import { requireAccess } from '../../../server/access.server'
 import { loadAnalytics, recentRequests } from '../../../server/stats.server'
 import { AnalyticsNotice } from '../../admin/notice'
 import { RangeTabs } from '../../admin/range-tabs'
@@ -30,7 +30,7 @@ export const meta: Route.MetaFunction = () => [
 ]
 
 export async function loader({ context, request }: Route.LoaderArgs) {
-  requireAdmin(context)
+  requireAccess(context, 'admin')
   const range = parseRange(new URL(request.url).searchParams.get('range'))
   return { range, logs: await loadAnalytics(() => recentRequests(range, history)) }
 }

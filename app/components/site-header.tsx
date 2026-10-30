@@ -1,5 +1,5 @@
 import { ChevronDown } from 'lucide-react'
-import { Form, Link, useNavigation } from 'react-router'
+import { Form, Link, useLocation, useNavigation } from 'react-router'
 
 import {
   DropdownMenu,
@@ -11,8 +11,11 @@ import {
 } from '~/components/ui/dropdown-menu'
 
 import type { User } from '../../server/schema.server'
+import { can } from '../auth/access'
+import { signInHref } from '../auth/next'
 
 export function SiteHeader({ user }: { user: User | null }) {
+  const { pathname, search } = useLocation()
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md [view-transition-name:site-header]">
       <div className="mx-auto flex h-12 w-full max-w-6xl items-center justify-between px-4">
@@ -40,7 +43,7 @@ export function SiteHeader({ user }: { user: User | null }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-44">
                 <DropdownMenuLabel>Signed in as @{user.handle}</DropdownMenuLabel>
-                {user.role === 'admin' && (
+                {can(user, 'admin') && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
@@ -65,7 +68,7 @@ export function SiteHeader({ user }: { user: User | null }) {
             </DropdownMenu>
           ) : (
             <Link
-              to="/signin"
+              to={signInHref(pathname === '/signin' ? '/' : `${pathname}${search}`)}
               viewTransition
               className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs transition-colors hover:bg-muted"
             >

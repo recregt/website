@@ -8,6 +8,7 @@ import { Input } from '~/components/ui/input'
 
 import { userContext } from '../../server/session.server'
 import { turnstileSiteKey } from '../../server/turnstile.server'
+import { nextPath } from '../auth/next'
 import { login, register } from '../auth/passkeys'
 import { useTurnstile } from '../auth/turnstile'
 import type { Route } from './+types/signin'
@@ -27,12 +28,13 @@ const messages: Record<Failure, string> = {
 
 export const meta: Route.MetaFunction = () => [{ title: 'Sign in · recregt' }]
 
-export function loader({ context }: Route.LoaderArgs) {
-  if (context.get(userContext)) throw redirect('/')
-  return { siteKey: turnstileSiteKey() }
+export function loader({ context, request }: Route.LoaderArgs) {
+  const next = nextPath(new URL(request.url).searchParams.get('next'))
+  if (context.get(userContext)) throw redirect(next)
+  return { next, siteKey: turnstileSiteKey() }
 }
 
-export default function SignIn({ loaderData: { siteKey } }: Route.ComponentProps) {
+export default function SignIn({ loaderData: { next, siteKey } }: Route.ComponentProps) {
   const navigate = useNavigate()
   const challenge = useRef<HTMLDivElement>(null)
   const human = useTurnstile(challenge, siteKey)
@@ -58,7 +60,7 @@ export default function SignIn({ loaderData: { siteKey } }: Route.ComponentProps
       if (!result.ok) setMessage(messages[result.error])
       else if (result.value.recoveryCode)
         setRecovery({ code: result.value.recoveryCode, signedIn: true })
-      else await navigate('/')
+      else await navigate(next)
     })
 
   const signUp = (handle: string, turnstile: string) =>
@@ -81,7 +83,7 @@ export default function SignIn({ loaderData: { siteKey } }: Route.ComponentProps
         <Button
           className="mt-6"
           disabled={busy}
-          onClick={recovery.signedIn ? () => navigate('/') : signIn}
+          onClick={recovery.signedIn ? () => navigate(next) : signIn}
         >
           {recovery.signedIn ? 'I saved it, continue' : 'I saved it, sign me in'}
         </Button>
