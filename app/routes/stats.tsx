@@ -78,48 +78,39 @@ function Stats({ stats }: { stats: SiteStats }) {
         <TrafficChart series={stats.series} />
       </Section>
 
-      <div className="gap-6 md:columns-2 [&>section]:mb-6 [&>section]:break-inside-avoid">
-        <Section title="Pages">
-          <RankedList rows={stats.pages} total={total} />
-        </Section>
+      <div className="gap-10 md:columns-2 [&>section]:mb-10 [&>section]:break-inside-avoid">
+        <Ranking title="Pages" rows={stats.pages} total={total} />
+        {details && <Ranking title="Referrers" rows={details.referrers} total={total} />}
+        <Ranking title="Countries" rows={stats.countries} total={total} />
+        {details && <Ranking title="Cities" rows={details.cities} total={total} />}
+        <Ranking title="Browsers" rows={stats.browsers} total={total} />
+        <Ranking title="Devices" rows={stats.devices} total={total} />
         {details && (
-          <Section title="Referrers">
-            <RankedList rows={details.referrers} total={total} />
-          </Section>
+          <>
+            <Ranking title="Operating systems" rows={details.systems} total={total} />
+            <Ranking
+              title="Screens"
+              rows={details.screens.rows}
+              total={details.screens.measuredViews}
+            />
+            <Ranking title="Languages" rows={details.languages} total={total} />
+          </>
         )}
-        <Section title="Countries">
-          <RankedList rows={stats.countries} total={total} />
-        </Section>
-        {details && (
-          <Section title="Cities">
-            <RankedList rows={details.cities} total={total} />
-          </Section>
-        )}
-        <Section title="Browsers">
-          <RankedList rows={stats.browsers} total={total} />
-        </Section>
-        <Section title="Devices">
-          <RankedList rows={stats.devices} total={total} />
-        </Section>
-        {details && <DetailLists details={details} total={total} />}
       </div>
 
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-sm font-medium">Performance</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            75th percentile across page views, rated against Core Web Vitals thresholds.
-          </p>
-        </div>
+      <Section
+        title="Performance"
+        description="75th percentile across page views, rated against Core Web Vitals thresholds."
+      >
         <Metrics
-          className="sm:grid-cols-3"
+          className="border-0 py-2 sm:grid-cols-3"
           items={[
             vital('Time to first byte', 'ttfbMs', stats.vitals.ttfbMs),
             vital('First contentful paint', 'fcpMs', stats.vitals.fcpMs),
             vital('Largest contentful paint', 'lcpMs', stats.vitals.lcpMs),
           ]}
         />
-      </section>
+      </Section>
 
       {details && (
         <>
@@ -146,19 +137,19 @@ function Stats({ stats }: { stats: SiteStats }) {
   )
 }
 
-function DetailLists({ details, total }: { details: StatsDetails; total: number }) {
+function Ranking({
+  title,
+  rows,
+  total,
+}: {
+  title: string
+  rows: { name: string; count: number }[]
+  total: number
+}) {
   return (
-    <>
-      <Section title="Operating systems">
-        <RankedList rows={details.systems} total={total} />
-      </Section>
-      <Section title="Screens">
-        <RankedList rows={details.screens.rows} total={details.screens.measuredViews} />
-      </Section>
-      <Section title="Languages">
-        <RankedList rows={details.languages} total={total} />
-      </Section>
-    </>
+    <Section title={title} action="Views">
+      <RankedList rows={rows} total={total} />
+    </Section>
   )
 }
 

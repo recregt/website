@@ -1,3 +1,4 @@
+import { Check, Copy, KeyRound } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { redirect, useNavigate } from 'react-router'
 
@@ -77,11 +78,18 @@ export default function SignIn({ loaderData: { next, siteKey } }: Route.Componen
           title="Save your recovery code"
           description="It is the only way back in if you lose every device with your passkey."
         />
-        <div className="flex max-w-md flex-col items-start gap-6">
-          <pre className="w-full overflow-x-auto rounded-xl border border-border bg-muted p-4 font-mono text-sm">
-            {recovery.code}
-          </pre>
-          <Button disabled={busy} onClick={recovery.signedIn ? () => navigate(next) : signIn}>
+        <div className="flex max-w-sm flex-col gap-4">
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-muted py-2 pr-2 pl-4">
+            <code className="min-w-0 flex-1 overflow-x-auto font-mono text-sm">
+              {recovery.code}
+            </code>
+            <CopyButton text={recovery.code} />
+          </div>
+          <Button
+            className="h-11 w-full"
+            disabled={busy}
+            onClick={recovery.signedIn ? () => navigate(next) : signIn}
+          >
             {recovery.signedIn ? 'I saved it, continue' : 'I saved it, sign me in'}
           </Button>
           {message && (
@@ -96,36 +104,63 @@ export default function SignIn({ loaderData: { next, siteKey } }: Route.Componen
 
   return (
     <Page narrow>
-      <PageHeader title="Sign in" description="Use the passkey saved on your device." />
-      <div className="flex max-w-md flex-col gap-4">
-        <div className="space-y-4 rounded-xl border border-border bg-card p-5">
-          <Button className="w-full" disabled={busy} onClick={signIn}>
+      <PageHeader title="Sign in" description="No password needed. Your passkey is enough." />
+      <div className="flex max-w-sm flex-col gap-8">
+        <div className="flex flex-col gap-3">
+          <Button className="h-11 w-full" disabled={busy} onClick={signIn}>
+            <KeyRound />
             Sign in with a passkey
           </Button>
-          <form
-            className="space-y-3 border-t border-border pt-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              if (human.token)
-                signUp(String(new FormData(event.currentTarget).get('handle')), human.token)
-            }}
-          >
-            <p className="text-sm font-medium">New here? Create an account.</p>
-            <label htmlFor="handle" className="block space-y-1.5 text-sm">
-              Handle
-              <Input id="handle" name="handle" required autoComplete="username" />
-            </label>
-            <div ref={challenge} />
-            <Button
-              type="submit"
-              variant="secondary"
-              className="w-full"
-              disabled={busy || !human.token}
-            >
-              Create an account
-            </Button>
-          </form>
+          <p className="text-sm text-muted-foreground">
+            Your browser or password manager will offer the passkey you saved for recregt.
+          </p>
         </div>
+
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span className="h-px flex-1 bg-border" />
+          New here?
+          <span className="h-px flex-1 bg-border" />
+        </div>
+
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (human.token)
+              signUp(String(new FormData(event.currentTarget).get('handle')), human.token)
+          }}
+        >
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="handle" className="text-sm font-medium">
+              Choose a handle
+            </label>
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
+                @
+              </span>
+              <Input
+                id="handle"
+                name="handle"
+                required
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                className="h-11 pl-7"
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">{messages.invalid_handle}</p>
+          </div>
+          <div ref={challenge} />
+          <Button
+            type="submit"
+            variant="outline"
+            className="h-11 w-full"
+            disabled={busy || !human.token}
+          >
+            {human.token ? 'Create an account' : 'Checking you are human…'}
+          </Button>
+        </form>
+
         {message && (
           <p role="alert" className="text-sm text-destructive">
             {message}
@@ -133,5 +168,19 @@ export default function SignIn({ loaderData: { next, siteKey } }: Route.Componen
         )}
       </div>
     </Page>
+  )
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+  }
+  return (
+    <Button variant="ghost" size="sm" onClick={() => copy().catch(() => setCopied(false))}>
+      {copied ? <Check /> : <Copy />}
+      {copied ? 'Copied' : 'Copy'}
+    </Button>
   )
 }
