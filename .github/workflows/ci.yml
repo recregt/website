@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
+
+      - name: Install dependencies
+        run: nix shell --inputs-from . nixpkgs#nodejs_24 nixpkgs#pnpm --command pnpm install --frozen-lockfile
+
+      - name: Nix formatting
+        run: git ls-files -z '*.nix' | xargs -0 nix run .#nixfmt --
+
+      - name: Types and lint
+        run: nix run .#check
+
+  commit-messages:
+    name: Commit Messages
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: recregt/commitlint
+          ref: v2.0.1
+          path: .commitlint
+          persist-credentials: false
+
+      - name: Lint commit messages
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          for sha in $(git rev-list "$BASE..$HEAD"); do
+            git log --format=%B -n1 "$sha" > "$RUNNER_TEMP/commit-msg"
+            python3 .commitlint/.lefthook/commit-msg/commit-msg.py "$RUNNER_TEMP/commit-msg" "$sha"
+          done
