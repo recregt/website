@@ -1,7 +1,10 @@
 import { data } from 'react-router'
 
+import { Page } from '~/components/page'
+
 import { findPost } from '../../../server/blog.server'
 import { Body } from '../../blog/body'
+import { postDate } from '../../blog/list'
 import { imageUrl } from '../../blog/sanity'
 import type { Route } from './+types/post'
 
@@ -18,19 +21,16 @@ export async function loader({ params }: Route.LoaderArgs) {
 
 export default function BlogPost({ loaderData: { post } }: Route.ComponentProps) {
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
+    <Page narrow>
       <article>
         <header>
-          <h1 className="font-heading text-4xl font-semibold tracking-tight text-balance">
+          <time className="text-sm text-muted-foreground" dateTime={post.publishedAt.toISOString()}>
+            {postDate.format(post.publishedAt)}
+          </time>
+          <h1 className="mt-2 font-heading text-4xl font-medium tracking-tight text-balance sm:text-5xl">
             {post.title}
           </h1>
-          <p className="mt-4 text-lg text-muted-foreground">{post.summary}</p>
-          <time
-            className="mt-5 block font-mono text-sm text-muted-foreground"
-            dateTime={post.publishedAt.toISOString()}
-          >
-            {post.publishedAt.toDateString()}
-          </time>
+          <p className="mt-4 text-xl text-muted-foreground">{post.summary}</p>
         </header>
         {post.coverImage && (
           <img
@@ -43,6 +43,6 @@ export default function BlogPost({ loaderData: { post } }: Route.ComponentProps)
           <Body value={post.body} />
         </div>
       </article>
-    </main>
+    </Page>
   )
 }

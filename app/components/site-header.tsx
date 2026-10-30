@@ -1,6 +1,8 @@
 import { ChevronDown } from 'lucide-react'
-import { Form, Link, useLocation, useNavigation } from 'react-router'
+import type { ReactNode } from 'react'
+import { Form, Link, NavLink, useLocation, useNavigation } from 'react-router'
 
+import { container } from '~/components/page'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,83 +11,98 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '~/components/ui/dropdown-menu'
+import { cn } from '~/lib/utils'
 
 import type { User } from '../../server/schema.server'
 import { can } from '../auth/access'
 import { signInHref } from '../auth/next'
 
 export function SiteHeader({ user }: { user: User | null }) {
-  const { pathname, search } = useLocation()
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md [view-transition-name:site-header]">
-      <div className="mx-auto flex h-12 w-full max-w-6xl items-center justify-between px-4">
-        <Link to="/" viewTransition className="font-mono text-sm tracking-tight">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md [view-transition-name:site-header]">
+      <div className={cn(container, 'flex h-14 items-center justify-between')}>
+        <Link to="/" viewTransition className="font-heading text-xl font-medium tracking-tight">
           recregt
         </Link>
-        <nav className="flex items-center gap-3 font-mono text-xs">
-          <Link
-            to="/blog"
-            viewTransition
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Blog
-          </Link>
-          <Link
-            to="/stats"
-            viewTransition
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Stats
-          </Link>
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-xs transition-colors hover:bg-muted"
-                >
-                  @{user.handle}
-                  <ChevronDown className="size-3.5 opacity-60" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-44">
-                <DropdownMenuLabel>Signed in as @{user.handle}</DropdownMenuLabel>
-                {can(user, 'admin') && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin" viewTransition className="cursor-pointer">
-                        Admin
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="p-0">
-                  <Form method="post" action="/signout" className="w-full">
-                    <button
-                      type="submit"
-                      className="w-full cursor-pointer px-2 py-1.5 text-left text-destructive"
-                    >
-                      Sign out
-                    </button>
-                  </Form>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Link
-              to={signInHref(pathname === '/signin' ? '/' : `${pathname}${search}`)}
-              viewTransition
-              className="rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs transition-colors hover:bg-muted"
-            >
-              Sign in
-            </Link>
-          )}
+        <nav className="flex items-center gap-1 text-sm">
+          <NavItem to="/blog">Blog</NavItem>
+          <NavItem to="/stats">Stats</NavItem>
+          <span className="mx-2 h-4 w-px bg-border" />
+          {user ? <Account user={user} /> : <SignIn />}
         </nav>
       </div>
       <NavigationProgress />
     </header>
+  )
+}
+
+function NavItem({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <NavLink
+      to={to}
+      viewTransition
+      className={({ isActive }) =>
+        cn(
+          'rounded-md px-2.5 py-1.5 transition-colors hover:text-foreground',
+          isActive ? 'text-foreground' : 'text-muted-foreground',
+        )
+      }
+    >
+      {children}
+    </NavLink>
+  )
+}
+
+function SignIn() {
+  const { pathname, search } = useLocation()
+  return (
+    <Link
+      to={signInHref(pathname === '/signin' ? '/' : `${pathname}${search}`)}
+      viewTransition
+      className="rounded-md px-2.5 py-1.5 font-medium transition-colors hover:bg-muted"
+    >
+      Sign in
+    </Link>
+  )
+}
+
+function Account({ user }: { user: User }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 font-medium transition-colors hover:bg-muted"
+        >
+          @{user.handle}
+          <ChevronDown className="size-3.5 text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-44">
+        <DropdownMenuLabel>Signed in as @{user.handle}</DropdownMenuLabel>
+        {can(user, 'admin') && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/admin" viewTransition className="cursor-pointer">
+                Admin
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="p-0">
+          <Form method="post" action="/signout" className="w-full">
+            <button
+              type="submit"
+              className="w-full cursor-pointer px-2 py-1.5 text-left text-destructive"
+            >
+              Sign out
+            </button>
+          </Form>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

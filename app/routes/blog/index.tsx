@@ -1,3 +1,5 @@
+import { Notice } from '~/components/notice'
+import { Page } from '~/components/page'
 import { PageHeader } from '~/components/page-header'
 
 import { listPosts } from '../../../server/blog.server'
@@ -12,11 +14,15 @@ export async function loader() {
 
 export default function Blog({ loaderData: { posts } }: Route.ComponentProps) {
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <PageHeader title="Blog" />
-      <div className="mt-4">
-        <PostList posts={posts} />
-      </div>
-    </main>
+    <Page narrow>
+      <PageHeader title="Blog" description="Notes and experiments on the modern web." />
+      {posts.length > 0 ? (
+        <div className="-mt-6">
+          <PostList posts={posts} />
+        </div>
+      ) : (
+        <Notice>Nothing published yet.</Notice>
+      )}
+    </Page>
   )
 }

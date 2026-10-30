@@ -19,6 +19,14 @@ export async function findAccount(id: string): Promise<Account | null> {
   return found ?? null
 }
 
+export async function adminHandles(): Promise<string[]> {
+  const admins = await db
+    .select({ handle: users.handle })
+    .from(users)
+    .where(eq(users.role, 'admin'))
+  return admins.map((admin) => admin.handle)
+}
+
 export async function findAccountByHandle(handle: string): Promise<Account | null> {
   const [found] = await db.select(account).from(users).where(eq(users.handle, handle))
   return found ?? null

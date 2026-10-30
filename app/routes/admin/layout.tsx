@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router'
 
+import { container } from '~/components/page'
 import { cn } from '~/lib/utils'
 
 const sections = [
@@ -9,7 +10,7 @@ const sections = [
 
 export default function AdminLayout() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
+    <main className={cn(container, 'flex flex-1 flex-col gap-10 py-12 sm:py-16')}>
       <nav aria-label="Admin" className="flex gap-1 border-b border-border">
         {sections.map((section) => (
           <NavLink
@@ -19,7 +20,7 @@ export default function AdminLayout() {
             viewTransition
             className={({ isActive }) =>
               cn(
-                '-mb-px border-b-2 px-3 py-2 font-mono text-xs transition-colors',
+                '-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
                 isActive
                   ? 'border-ring text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground',

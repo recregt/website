@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
 import { cn } from '~/lib/utils'
 
 export function Section({
@@ -17,15 +16,17 @@ export function Section({
   children: ReactNode
 }) {
   return (
-    <Card className={cn('flex flex-col', className)}>
-      <CardHeader className="p-4 pb-3">
-        <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-sm">{title}</CardTitle>
-          {action}
+    <section
+      className={cn('flex flex-col gap-4 rounded-xl border border-border bg-card p-5', className)}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-medium">{title}</h2>
+          {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
         </div>
-        {description && <CardDescription>{description}</CardDescription>}
-      </CardHeader>
-      <CardContent className="flex flex-1 flex-col p-4 pt-0">{children}</CardContent>
-    </Card>
+        {action}
+      </div>
+      {children}
+    </section>
   )
 }

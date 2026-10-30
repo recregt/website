@@ -1,16 +1,22 @@
 import 'uplot/dist/uPlot.min.css'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import uPlot from 'uplot'
 
 import { useTheme } from '~/hooks/use-theme'
 
 import type { SiteStats } from '../../server/stats.server'
 
-const height = 320
-const sparklineHeight = 36
-const axisFont = '10px "Geist Mono Variable", monospace'
+type Series = SiteStats['series']
 
+const height = 280
+const axisFont = '11px "Geist Variable", sans-serif'
+
+const stepSeconds = { hour: 3600, day: 86400 } as const
+const tickSteps = {
+  hour: [1, 2, 3, 6, 12].map((hours) => hours * stepSeconds.hour),
+  day: [1, 2, 7, 14, 30].map((days) => days * stepSeconds.day),
+}
 const tickFormats = {
   hour: new Intl.DateTimeFormat('en', {
     hour: '2-digit',
@@ -20,54 +26,113 @@ const tickFormats = {
   }),
   day: new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
 }
+const readoutFormats = {
+  hour: new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'UTC',
+  }),
+  day: new Intl.DateTimeFormat('en', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }),
+}
 
 export const seriesTokens = { views: '--chart-1', visitors: '--chart-2' } as const
-type Token = (typeof seriesTokens)[keyof typeof seriesTokens]
 
-export function TrafficChart({ series: { step, points } }: { series: SiteStats['series'] }) {
+export function TrafficChart({ series }: { series: Series }) {
+  const [hovered, setHovered] = useState<number | null>(null)
+  const point = series.points[hovered ?? series.points.length - 1]
+  return (
+    <div className="flex flex-col gap-3">
+      {point && (
+        <p className="flex flex-wrap gap-x-4 text-sm">
+          <span className="text-muted-foreground">
+            {readoutFormats[series.step].format(point.time * 1000)}
+          </span>
+          <span className="tabular-nums">
+            <span className="mr-1.5 inline-block size-2 rounded-sm bg-chart-1" />
+            {point.views.toLocaleString('en')} views
+          </span>
+          <span className="tabular-nums">
+            <span className="mr-1.5 inline-block size-2 rounded-full bg-chart-2" />
+            {point.visitors.toLocaleString('en')} visitors
+          </span>
+        </p>
+      )}
+      <Plot series={series} onHover={setHovered} />
+    </div>
+  )
+}
+
+function Plot({
+  series: { step, points },
+  onHover,
+}: {
+  series: Series
+  onHover: (index: number | null) => void
+}) {
   const container = useRef<HTMLDivElement>(null)
   const theme = useTheme()
 
   useEffect(() => {
     const element = container.current
     if (!element || points.length === 0) return
+    const half = stepSeconds[step] / 2
+    const views = theme(seriesTokens.views)
     const axis: uPlot.Axis = {
       stroke: theme('--muted-foreground'),
       grid: { stroke: theme('--border'), width: 1 },
-      ticks: { stroke: theme('--border'), width: 1 },
+      ticks: { show: false },
       font: axisFont,
-      size: 44,
+      size: 40,
     }
     const chart = new uPlot(
       {
         width: element.clientWidth,
         height,
-        padding: [8, 8, 4, 44],
-        cursor: { show: false },
+        padding: [8, 0, 0, 0],
         legend: { show: false },
+        cursor: {
+          y: false,
+          points: { show: false },
+          drag: { x: false, y: false, setScale: false },
+        },
+        hooks: { setCursor: [(plot) => onHover(plot.cursor.idx ?? null)] },
         tzDate: (seconds) => uPlot.tzDate(new Date(seconds * 1000), 'Etc/UTC'),
+        scales: {
+          x: { range: (_plot, min, max) => [min - half, max + half] },
+          y: { range: (_plot, _min, max) => [0, Math.max(1, max)] },
+        },
         axes: [
           {
             ...axis,
             size: 28,
-            values: (_chart, values) =>
-              values.map((value) => tickFormats[step].format(value * 1000)),
+            grid: { show: false },
+            incrs: tickSteps[step],
+            values: (_plot, ticks) => ticks.map((tick) => tickFormats[step].format(tick * 1000)),
           },
           axis,
         ],
-        scales: { y: { range: (_chart, _min, max) => [0, Math.max(1, max)] } },
         series: [
           {},
           {
-            stroke: theme(seriesTokens.views),
-            width: 2,
-            paths: uPlot.paths.spline?.(),
-            fill: (chart) => fade(chart, theme(seriesTokens.views), 18),
+            stroke: views,
+            width: 0,
+            fill: withAlpha(views, 85),
+            paths: uPlot.paths.bars?.({ size: [0.7] }),
+            points: { show: false },
           },
           {
             stroke: theme(seriesTokens.visitors),
             width: 2,
-            paths: uPlot.paths.spline?.(),
+            paths: uPlot.paths.linear?.(),
+            points: { show: false },
           },
         ],
       },
@@ -78,68 +143,24 @@ export function TrafficChart({ series: { step, points } }: { series: SiteStats['
       ],
       element,
     )
-    return follow(element, chart, height)
-  }, [step, points, theme])
+    const resize = new ResizeObserver(() => chart.setSize({ width: element.clientWidth, height }))
+    resize.observe(element)
+    document.fonts.ready.then(() => chart.redraw(false, true)).catch(() => {})
+    return () => {
+      resize.disconnect()
+      chart.destroy()
+    }
+  }, [step, points, theme, onHover])
 
-  return <div ref={container} className="h-80 w-full" />
+  return <div ref={container} className="w-full" style={{ height }} />
 }
 
-export function Sparkline({ values, token }: { values: number[]; token: Token }) {
-  const container = useRef<HTMLDivElement>(null)
-  const theme = useTheme()
-
-  useEffect(() => {
-    const element = container.current
-    if (!element || values.length === 0) return
-    const color = theme(token)
-    const chart = new uPlot(
-      {
-        width: element.clientWidth,
-        height: sparklineHeight,
-        padding: [2, 0, 2, 0],
-        cursor: { show: false },
-        legend: { show: false },
-        axes: [{ show: false }, { show: false }],
-        series: [
-          {},
-          {
-            stroke: color,
-            width: 1.5,
-            paths: uPlot.paths.spline?.(),
-            fill: (chart) => fade(chart, color, 22),
-          },
-        ],
-      },
-      [values.map((_, index) => index), values],
-      element,
-    )
-    return follow(element, chart, sparklineHeight)
-  }, [values, token, theme])
-
-  return <div ref={container} className="h-9 w-full" />
-}
-
-function follow(element: HTMLElement, chart: uPlot, chartHeight: number) {
-  const resize = new ResizeObserver(() =>
-    chart.setSize({ width: element.clientWidth, height: chartHeight }),
-  )
-  resize.observe(element)
-  document.fonts.ready.then(() => chart.redraw(false, true)).catch(() => {})
-  return () => {
-    resize.disconnect()
-    chart.destroy()
-  }
-}
-
-function fade(chart: uPlot, color: string, percent: number) {
-  const context = chart.ctx
+function withAlpha(color: string, percent: number): string {
+  const context = document.createElement('canvas').getContext('2d')
+  if (!context) return color
   context.fillStyle = color
-  const opaque = String(context.fillStyle)
   const alpha = Math.round((percent / 100) * 255)
     .toString(16)
     .padStart(2, '0')
-  const gradient = context.createLinearGradient(0, 0, 0, chart.bbox.height / devicePixelRatio)
-  gradient.addColorStop(0, `${opaque}${alpha}`)
-  gradient.addColorStop(1, `${opaque}00`)
-  return gradient
+  return `${String(context.fillStyle)}${alpha}`
 }

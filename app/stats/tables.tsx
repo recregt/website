@@ -1,107 +1,82 @@
-import { useMemo } from 'react'
-
+import { Notice } from '~/components/notice'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '~/components/ui/table'
 import { cn } from '~/lib/utils'
 
 import type { StatsDetails } from '../../server/stats.server'
-import { columnHelper, DataTable } from './data-table'
 
-type RankedRow = { name: string; count: number; share: number }
-type RecentRow = StatsDetails['recent'][number]
-type SlowRow = StatsDetails['slowest'][number]
-
-const ranked = columnHelper<RankedRow>()
-const rankedColumns = ranked.columns([
-  ranked.accessor('name', {
-    header: 'Name',
-    cell: (info) => <span className="block max-w-64 truncate">{info.getValue()}</span>,
-  }),
-  ranked.accessor('count', {
-    header: 'Count',
-    cell: (info) => <span className="tabular-nums">{info.getValue().toLocaleString()}</span>,
-  }),
-  ranked.accessor('share', {
-    header: 'Share of views',
-    cell: (info) => <Bar share={info.getValue()} />,
-  }),
-])
-
-const recent = columnHelper<RecentRow>()
-const recentColumns = recent.columns([
-  recent.accessor('timestamp', {
-    header: 'Time',
-    cell: (info) => <span className="font-mono text-xs">{info.getValue()}</span>,
-  }),
-  recent.accessor('status', {
-    header: 'Status',
-    cell: (info) => <StatusBadge status={info.getValue()} />,
-  }),
-  recent.accessor('path', {
-    header: 'Path',
-    cell: (info) => <span className="block max-w-72 truncate">{info.getValue()}</span>,
-  }),
-  recent.accessor('durationMs', {
-    header: 'Duration',
-    cell: (info) => <span className="tabular-nums">{Math.round(info.getValue())} ms</span>,
-  }),
-])
-
-const slow = columnHelper<SlowRow>()
-const slowColumns = slow.columns([
-  slow.accessor('name', {
-    header: 'Path',
-    cell: (info) => <span className="block max-w-72 truncate">{info.getValue()}</span>,
-  }),
-  slow.accessor('ms', { header: 'Avg.', cell: (info) => `${Math.round(info.getValue())} ms` }),
-  slow.accessor('count', { header: 'Requests' }),
-])
-
-export function Slowest({ rows }: { rows: SlowRow[] }) {
-  return <DataTable columns={slowColumns} data={rows} />
-}
-
-export function Ranked({
-  rows,
-  total,
-}: {
-  rows: { name: string; count: number }[]
-  total: number
-}) {
-  const data = useMemo(
-    () => rows.map((row) => ({ ...row, share: total ? row.count / total : 0 })),
-    [rows, total],
+export function SlowestTable({ rows }: { rows: StatsDetails['slowest'] }) {
+  if (rows.length === 0) return <Notice>No data yet</Notice>
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Path</TableHead>
+          <TableHead className="text-right">Average</TableHead>
+          <TableHead className="text-right">Requests</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.name}>
+            <TableCell>
+              <span className="block max-w-96 truncate">{row.name}</span>
+            </TableCell>
+            <TableCell className="text-right tabular-nums">{Math.round(row.ms)} ms</TableCell>
+            <TableCell className="text-right tabular-nums">
+              {row.count.toLocaleString('en')}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   )
-  return <DataTable columns={rankedColumns} data={data} />
 }
 
-export function Recent({ rows }: { rows: RecentRow[] }) {
-  return <DataTable columns={recentColumns} data={rows} />
+export function RecentTable({ rows }: { rows: StatsDetails['recent'] }) {
+  if (rows.length === 0) return <Notice>No data yet</Notice>
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Time (UTC)</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Path</TableHead>
+          <TableHead className="text-right">Duration</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={`${row.timestamp}-${row.ip}-${row.path}`}>
+            <TableCell className="text-muted-foreground tabular-nums">{row.timestamp}</TableCell>
+            <TableCell>
+              <StatusBadge status={row.status} />
+            </TableCell>
+            <TableCell>
+              <span className="block max-w-96 truncate">{row.path}</span>
+            </TableCell>
+            <TableCell className="text-right tabular-nums">
+              {Math.round(row.durationMs)} ms
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
 }
 
 export function StatusBadge({ status }: { status: number }) {
   const ok = status < 400
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border bg-muted px-2 py-0.5 text-xs tabular-nums',
-        ok ? 'border-success/20' : 'border-destructive/20',
-      )}
-    >
+    <span className="inline-flex items-center gap-1.5 tabular-nums">
       <span className={cn('size-1.5 rounded-full', ok ? 'bg-success' : 'bg-destructive')} />
       {status}
     </span>
-  )
-}
-
-function Bar({ share }: { share: number }) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="h-1 w-24 overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-chart-1 transition-[width] duration-300"
-          style={{ width: `${share * 100}%` }}
-        />
-      </div>
-      <span className="w-10 text-right text-xs tabular-nums">{Math.round(share * 100)}%</span>
-    </div>
   )
 }
