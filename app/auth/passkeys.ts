@@ -22,6 +22,40 @@ export async function login() {
   return post('login-finish', { credential })
 }
 
+export async function addPasskey() {
+  const begin = await confirmed(() => post('passkey-begin', {}))
+  if (!begin.ok) return begin
+
+  const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(begin.value.publicKey)
+  const credential = await ceremony(() => navigator.credentials.create({ publicKey }))
+  if (!credential) return cancelled
+
+  return post('passkey-finish', { credential })
+}
+
+export function renamePasskey(id: string, name: string) {
+  return post('passkey-rename', { id, name })
+}
+
+export function removePasskey(id: string) {
+  return confirmed(() => post('passkey-remove', { id }))
+}
+
+async function confirmed<S extends Step>(attempt: () => Promise<Reply<S>>) {
+  const first = await attempt()
+  if (first.ok || first.error !== 'not_confirmed') return first
+
+  const begin = await post('confirm-begin', {})
+  if (!begin.ok) return begin
+  const publicKey = PublicKeyCredential.parseRequestOptionsFromJSON(begin.value.publicKey)
+  const credential = await ceremony(() => navigator.credentials.get({ publicKey }))
+  if (!credential) return cancelled
+
+  const finish = await post('confirm-finish', { credential })
+  if (!finish.ok) return finish
+  return attempt()
+}
+
 async function ceremony(run: () => Promise<Credential | null>): Promise<CredentialJSON | null> {
   try {
     const credential = await run()

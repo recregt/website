@@ -239,6 +239,13 @@ async function visitor(request: Request): Promise<string> {
     .join('')
 }
 
+export function deviceLabel(userAgent: string): string {
+  const name = browser(userAgent).replace(/ \d+$/, '')
+  const system = operatingSystem(userAgent)
+  const parts = [name, system].filter((part) => part !== 'other')
+  return parts.length > 0 ? parts.join(' on ') : 'Passkey'
+}
+
 function describeAgent(userAgent: string) {
   return {
     raw: userAgent.slice(0, 512),

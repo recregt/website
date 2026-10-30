@@ -27,12 +27,44 @@ export type Steps = {
     value: { handle: string; recoveryCode: string | null }
     error: 'ceremony_failed'
   }
+  'confirm-begin': {
+    body: Record<string, never>
+    value: RequestOptions
+    error: 'signed_out'
+  }
+  'confirm-finish': {
+    body: { credential: CredentialJSON }
+    value: Record<string, never>
+    error: 'signed_out' | 'ceremony_failed'
+  }
+  'passkey-begin': {
+    body: Record<string, never>
+    value: CreationOptions
+    error: 'signed_out' | 'not_confirmed'
+  }
+  'passkey-finish': {
+    body: { credential: CredentialJSON }
+    value: Record<string, never>
+    error: 'signed_out' | 'ceremony_failed' | 'credential_limit' | 'already_exists'
+  }
+  'passkey-rename': {
+    body: { id: string; name: string }
+    value: Record<string, never>
+    error: 'signed_out' | 'invalid_name' | 'not_found'
+  }
+  'passkey-remove': {
+    body: { id: string }
+    value: Record<string, never>
+    error: 'signed_out' | 'not_confirmed' | 'last_credential' | 'not_found'
+  }
 }
 
 export type Step = keyof Steps
 export type Reply<S extends Step> = Result<Steps[S]['value'], Steps[S]['error']>
 
 export const handlePattern = /^[a-z0-9][a-z0-9_-]{2,23}$/
+
+export const passkeyNameLength = 64
 
 export const handleRules = 'Handles are 3 to 24 characters: lowercase letters, digits, - and _.'
 

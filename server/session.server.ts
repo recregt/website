@@ -8,6 +8,14 @@ const attributes = { httpOnly: true, secure: true, sameSite: 'strict', path: '/'
 
 export const sessionCookie = createCookie('session', attributes)
 export const slotCookie = createCookie('slot', attributes)
+export const confirmCookie = createCookie('confirm', attributes)
+
+export async function isConfirmed(request: Request, user: User): Promise<boolean> {
+  const token = await readCookie(confirmCookie, request)
+  if (!token) return false
+  const session = await parvus.introspect({ token })
+  return session.ok && session.value.user_id === user.id
+}
 
 export const userContext = createContext<User | null>(null)
 

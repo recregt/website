@@ -8,10 +8,12 @@ import { Input } from '~/components/ui/input'
 
 import { requireUser } from '../../server/access.server'
 import * as parvus from '../../server/parvus/client.server'
+import { listPasskeys, passkeyLimit } from '../../server/passkeys.server'
 import { clearCookie, sessionCookie } from '../../server/session.server'
 import { findAccount, renameAccount } from '../../server/users.server'
 import { handleRules, normalizeHandle } from '../auth/protocol'
 import { postDate } from '../blog/list'
+import { Passkeys } from '../settings/passkeys'
 import type { Route } from './+types/settings'
 
 type RenameError = 'invalid_handle' | 'handle_taken'
@@ -28,9 +30,14 @@ export const meta: Route.MetaFunction = () => [
 
 export async function loader({ context }: Route.LoaderArgs) {
   const user = requireUser(context)
-  const account = await findAccount(user.id)
+  const [account, passkeys] = await Promise.all([findAccount(user.id), listPasskeys(user.id)])
   if (!account) throw data(null, { status: 401 })
-  return { handle: account.handle, memberSince: account.createdAt }
+  return {
+    handle: account.handle,
+    memberSince: account.createdAt,
+    passkeys,
+    passkeyLimit,
+  }
 }
 
 export async function action({ context, request }: Route.ActionArgs) {
@@ -58,7 +65,9 @@ function renameFailed(error: RenameError) {
   return data({ error }, { status: error === 'handle_taken' ? 409 : 400 })
 }
 
-export default function Settings({ loaderData: { handle, memberSince } }: Route.ComponentProps) {
+export default function Settings({
+  loaderData: { handle, memberSince, passkeys, passkeyLimit },
+}: Route.ComponentProps) {
   return (
     <Page narrow>
       <PageHeader title="Settings" description="Your account on recregt." />
@@ -77,6 +86,8 @@ export default function Settings({ loaderData: { handle, memberSince } }: Route.
           </div>
         </dl>
       </Section>
+
+      <Passkeys passkeys={passkeys} limit={passkeyLimit} />
 
       <Section title="Sessions">
         <div className="flex flex-col items-start gap-4">

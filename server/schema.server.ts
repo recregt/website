@@ -15,6 +15,19 @@ export const users = sqliteTable(
   (table) => [index('users_by_status_age').on(table.status, table.createdAt)],
 )
 
+export const passkeys = sqliteTable(
+  'passkeys',
+  {
+    id: text().primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text().notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' }),
+  },
+  (table) => [index('passkeys_by_user').on(table.userId)],
+)
+
 export type Account = Pick<
   typeof users.$inferSelect,
   'id' | 'handle' | 'status' | 'role' | 'createdAt'

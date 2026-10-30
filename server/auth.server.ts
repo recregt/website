@@ -4,13 +4,23 @@ import { z } from 'zod'
 import {
   type CredentialJSON,
   normalizeHandle,
+  passkeyNameLength,
   type Reply,
   type Step,
   type Steps,
 } from '../app/auth/protocol'
+import { deviceLabel } from './analytics.server'
 import * as parvus from './parvus/client.server'
-import type { Account } from './schema.server'
-import { clearCookie, readCookie, sessionCookie, slotCookie } from './session.server'
+import { forgetPasskey, recordPasskey, renamePasskey } from './passkeys.server'
+import type { Account, User } from './schema.server'
+import {
+  clearCookie,
+  confirmCookie,
+  isConfirmed,
+  readCookie,
+  sessionCookie,
+  slotCookie,
+} from './session.server'
 import { verifyHuman } from './turnstile.server'
 import {
   activate,
@@ -25,15 +35,26 @@ const ceremonySeconds = 5 * 60
 const sessionSeconds = 30 * 24 * 60 * 60
 
 type Outcome<S extends Step> = { reply: Reply<S>; cookies: string[] }
-type Handler<S extends Step> = (body: Steps[S]['body'], request: Request) => Promise<Outcome<S>>
+type Handler<S extends Step> = (
+  body: Steps[S]['body'],
+  request: Request,
+  user: User | null,
+) => Promise<Outcome<S>>
 
 const credential = z.custom<CredentialJSON>((value) => typeof value === 'object' && value !== null)
+const empty = z.record(z.string(), z.never())
 
 const bodies: { [S in Step]: z.ZodType<Steps[S]['body']> } = {
   'registration-begin': z.object({ handle: z.string(), turnstile: z.string() }),
   'registration-finish': z.object({ credential }),
-  'login-begin': z.record(z.string(), z.never()),
+  'login-begin': empty,
   'login-finish': z.object({ credential }),
+  'confirm-begin': empty,
+  'confirm-finish': z.object({ credential }),
+  'passkey-begin': empty,
+  'passkey-finish': z.object({ credential }),
+  'passkey-rename': z.object({ id: z.string().min(1), name: z.string() }),
+  'passkey-remove': z.object({ id: z.string().min(1) }),
 }
 
 const handlers: { [S in Step]: Handler<S> } = {
@@ -69,6 +90,7 @@ const handlers: { [S in Step]: Handler<S> } = {
       await parvus.deleteUser(user_id)
       return refuse('ceremony_failed')
     }
+    await recordPasskey(user_id, body.credential.id, deviceOf(request))
     return {
       reply: { ok: true, value: { recoveryCode: recovery_code } },
       cookies: [await clearCookie(slotCookie)],
@@ -109,6 +131,85 @@ const handlers: { [S in Step]: Handler<S> } = {
       ],
     }
   },
+
+  'confirm-begin': async (_body, _request, user) => {
+    if (!user) return refuse('signed_out')
+    const slot = crypto.randomUUID()
+    const options = await parvus.loginBegin({
+      slot,
+      user_id: user.id,
+      ttl_seconds: ceremonySeconds,
+    })
+    return { reply: { ok: true, value: options }, cookies: [await slotCookie.serialize(slot)] }
+  },
+
+  'confirm-finish': async (body, request, user) => {
+    if (!user) return refuse('signed_out')
+    const slot = await readCookie(slotCookie, request)
+    if (!slot) return refuse('ceremony_failed')
+
+    const session = await parvus.loginFinish({
+      slot,
+      credential: body.credential,
+      ttl_seconds: ceremonySeconds,
+    })
+    if (!session.ok) return refuse('ceremony_failed')
+    if (session.value.user_id !== user.id) {
+      await parvus.logout({ token: session.value.token })
+      return refuse('ceremony_failed')
+    }
+    return {
+      reply: { ok: true, value: {} },
+      cookies: [
+        await confirmCookie.serialize(session.value.token, {
+          expires: new Date(session.value.expires_at),
+        }),
+        await clearCookie(slotCookie),
+      ],
+    }
+  },
+
+  'passkey-begin': async (_body, request, user) => {
+    if (!user) return refuse('signed_out')
+    if (!(await isConfirmed(request, user))) return refuse('not_confirmed')
+    const options = await parvus.credentialBegin(user.id, { ttl_seconds: ceremonySeconds })
+    if (!options.ok) return refuse('signed_out')
+    return { reply: { ok: true, value: options.value }, cookies: [] }
+  },
+
+  'passkey-finish': async (body, request, user) => {
+    if (!user) return refuse('signed_out')
+    const added = await parvus.credentialFinish(user.id, { credential: body.credential })
+    if (!added.ok) {
+      if (added.error === 'credential_limit' || added.error === 'already_exists') {
+        return refuse(added.error)
+      }
+      return refuse('ceremony_failed')
+    }
+    await recordPasskey(user.id, body.credential.id, deviceOf(request))
+    return { reply: { ok: true, value: {} }, cookies: [] }
+  },
+
+  'passkey-rename': async (body, _request, user) => {
+    if (!user) return refuse('signed_out')
+    const name = body.name.trim()
+    if (!name || name.length > passkeyNameLength) return refuse('invalid_name')
+    if (!(await renamePasskey(user.id, body.id, name))) return refuse('not_found')
+    return { reply: { ok: true, value: {} }, cookies: [] }
+  },
+
+  'passkey-remove': async (body, request, user) => {
+    if (!user) return refuse('signed_out')
+    if (!(await isConfirmed(request, user))) return refuse('not_confirmed')
+    const removed = await parvus.credentialDelete(user.id, body.id)
+    if (!removed.ok) return refuse(removed.error)
+    await forgetPasskey(user.id, body.id)
+    return { reply: { ok: true, value: {} }, cookies: [] }
+  },
+}
+
+function deviceOf(request: Request): string {
+  return deviceLabel(request.headers.get('user-agent') ?? '')
 }
 
 async function claim(handle: string): Promise<string | null> {
@@ -148,19 +249,27 @@ function ceremonyCutoff(): Date {
   return new Date(Date.now() - ceremonySeconds * 1000)
 }
 
-export function runStep(name: string | undefined, request: Request): Promise<Response> {
+export function runStep(
+  name: string | undefined,
+  request: Request,
+  user: User | null,
+): Promise<Response> {
   if (!isStep(name)) throw data(null, { status: 404 })
-  return run(name, request)
+  return run(name, request, user)
 }
 
-async function run<S extends Step>(step: S, request: Request): Promise<Response> {
+async function run<S extends Step>(
+  step: S,
+  request: Request,
+  user: User | null,
+): Promise<Response> {
   if (!request.headers.get('content-type')?.startsWith('application/json')) {
     throw data(null, { status: 415 })
   }
   const body = bodies[step].safeParse(await request.json().catch(() => undefined))
   if (!body.success) throw data(null, { status: 400 })
 
-  const { reply, cookies } = await handlers[step](body.data, request)
+  const { reply, cookies } = await handlers[step](body.data, request, user)
   const headers = new Headers()
   for (const cookie of cookies) headers.append('set-cookie', cookie)
   return Response.json(reply, { headers })
