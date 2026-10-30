@@ -1,5 +1,5 @@
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { type ReactNode, useMemo } from 'react'
 import { Link, useNavigation } from 'react-router'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
@@ -7,9 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { cn } from '~/lib/utils'
 
 import { requireAdmin } from '../../server/session.server'
-import { analyticsConfigured, type SiteStats, siteStats } from '../../server/stats.server'
+import { loadAnalytics, type SiteStats, siteStats } from '../../server/stats.server'
 import { Sparkline, seriesColors, TrafficChart } from '../admin/chart'
-import { parseRange, type Range, ranges } from '../admin/ranges'
+import { AnalyticsNotice } from '../admin/notice'
+import { parseRange, type Range, rangeLabel } from '../admin/ranges'
 import { AdminShell, RangeTabs } from '../admin/shell'
 import { Ranked, Recent, Slowest } from '../admin/tables'
 import type { Route } from './+types/admin'
@@ -22,8 +23,7 @@ export const meta: Route.MetaFunction = () => [
 export async function loader({ context, request }: Route.LoaderArgs) {
   const user = requireAdmin(context)
   const range = parseRange(new URL(request.url).searchParams.get('range'))
-  if (!analyticsConfigured()) return { range, stats: null, user }
-  return { range, stats: await siteStats(range), user }
+  return { range, stats: await loadAnalytics(() => siteStats(range)), user }
 }
 
 export default function Admin({ loaderData: { range, stats, user } }: Route.ComponentProps) {
@@ -46,15 +46,20 @@ export default function Admin({ loaderData: { range, stats, user } }: Route.Comp
           </div>
           <RangeTabs range={range} />
         </div>
-        {stats === null ? <NotConfigured /> : <Dashboard range={range} stats={stats} />}
+        {stats.ok ? (
+          <Dashboard range={range} stats={stats.value} />
+        ) : (
+          <AnalyticsNotice reason={stats.reason} />
+        )}
       </div>
     </AdminShell>
   )
 }
 
 function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
-  const views = stats.series.map((point) => point.views)
-  const visitors = stats.series.map((point) => point.visitors)
+  const points = stats.series.points
+  const views = useMemo(() => points.map((point) => point.views), [points])
+  const visitors = useMemo(() => points.map((point) => point.visitors), [points])
   const vitals = stats.performance.vitals
   return (
     <>
@@ -92,19 +97,19 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
               Visitors
             </span>
           </div>
-          <CardDescription>Views and visitors over the last {ranges[range]} days.</CardDescription>
+          <CardDescription>Views and visitors over {rangeLabel(range)}, in UTC.</CardDescription>
         </CardHeader>
         <CardContent>
-          <TrafficChart points={stats.series} />
+          <TrafficChart series={stats.series} />
         </CardContent>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title="Top pages">
-          <Ranked rows={stats.content.pages} />
+          <Ranked rows={stats.pages} />
         </SectionCard>
         <SectionCard title="Referrers">
-          <Ranked rows={stats.sources.referrers} />
+          <Ranked rows={stats.referrers} />
         </SectionCard>
       </div>
 
@@ -188,7 +193,7 @@ function Dashboard({ range, stats }: { range: Range; stats: SiteStats }) {
           </div>
         </CardHeader>
         <CardContent>
-          <Recent rows={stats.recent.slice(0, 10)} />
+          <Recent rows={stats.recent} />
         </CardContent>
       </Card>
     </>
@@ -306,16 +311,6 @@ function TabsCard({
           ))}
         </CardContent>
       </Tabs>
-    </Card>
-  )
-}
-
-function NotConfigured() {
-  return (
-    <Card>
-      <CardContent className="text-muted-foreground">
-        Analytics is not configured: set the ANALYTICS_TOKEN secret.
-      </CardContent>
     </Card>
   )
 }

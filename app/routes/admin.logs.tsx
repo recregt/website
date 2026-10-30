@@ -13,12 +13,14 @@ import {
 import { cn } from '~/lib/utils'
 
 import { requireAdmin } from '../../server/session.server'
-import { analyticsConfigured, recentRequests } from '../../server/stats.server'
-import { parseRange, ranges } from '../admin/ranges'
-import { AdminShell } from '../admin/shell'
+import { loadAnalytics, recentRequests } from '../../server/stats.server'
+import { AnalyticsNotice } from '../admin/notice'
+import { parseRange, rangeLabel } from '../admin/ranges'
+import { AdminShell, RangeTabs } from '../admin/shell'
 import { StatusBadge } from '../admin/tables'
 import type { Route } from './+types/admin.logs'
 
+const history = 200
 const perPage = 50
 
 export const meta: Route.MetaFunction = () => [
@@ -29,30 +31,57 @@ export const meta: Route.MetaFunction = () => [
 export async function loader({ context, request }: Route.LoaderArgs) {
   const user = requireAdmin(context)
   const range = parseRange(new URL(request.url).searchParams.get('range'))
-  if (!analyticsConfigured()) return { range, logs: null, user }
-  return { range, logs: await recentRequests(range), user }
+  return { range, logs: await loadAnalytics(() => recentRequests(range, history)), user }
 }
 
-type LogRow = NonNullable<Awaited<ReturnType<typeof recentRequests>>>[number]
+type LogRow = Awaited<ReturnType<typeof recentRequests>>[number]
 
 export default function Logs({ loaderData: { range, logs, user } }: Route.ComponentProps) {
   const loading = useNavigation().state === 'loading'
+  return (
+    <AdminShell user={user} crumb="logs">
+      <div
+        aria-busy={loading}
+        className={cn(
+          'mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 p-6 transition-opacity duration-150',
+          loading && 'opacity-60',
+        )}
+      >
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
+              Analytics
+            </p>
+            <h1 className="text-3xl font-semibold tracking-tight">Logs</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              The latest {history} requests over {rangeLabel(range)}.
+            </p>
+          </div>
+          <RangeTabs range={range} />
+        </div>
+        {logs.ok ? <LogBrowser logs={logs.value} /> : <AnalyticsNotice reason={logs.reason} />}
+      </div>
+    </AdminShell>
+  )
+}
+
+function LogBrowser({ logs }: { logs: LogRow[] }) {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<string>('all')
-  const [method, setMethod] = useState<string>('all')
+  const [kind, setKind] = useState<string>('all')
   const [page, setPage] = useState(0)
 
-  const kinds = useMemo(() => [...new Set((logs ?? []).map((row) => row.kind))].slice(0, 6), [logs])
+  const kinds = useMemo(() => [...new Set(logs.map((row) => row.kind))].slice(0, 6), [logs])
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
-    return (logs ?? []).filter((row) => {
+    return logs.filter((row) => {
       if (status !== 'all' && Math.floor(row.status / 100) !== Number.parseInt(status, 10))
         return false
-      if (method !== 'all' && row.kind !== method) return false
+      if (kind !== 'all' && row.kind !== kind) return false
       if (term && !`${row.path} ${row.ip}`.toLowerCase().includes(term)) return false
       return true
     })
-  }, [logs, search, status, method])
+  }, [logs, search, status, kind])
 
   const pages = Math.max(1, Math.ceil(filtered.length / perPage))
   const current = Math.min(page, pages - 1)
@@ -64,82 +93,64 @@ export default function Logs({ loaderData: { range, logs, user } }: Route.Compon
   }
 
   return (
-    <AdminShell user={user} crumb="logs">
-      <div
-        aria-busy={loading}
-        className={cn(
-          'mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 p-6 transition-opacity duration-150',
-          loading && 'opacity-60',
-        )}
-      >
-        <div>
-          <p className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
-            Analytics
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">Logs</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Request history over the last {ranges[range]} days.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <Input
-            type="search"
-            placeholder="Search path or IP"
-            value={search}
-            onChange={(event) => update(setSearch)(event.target.value)}
-            className="w-64"
-          />
-          <div className="flex items-center gap-1">
-            {['all', '2', '4', '5'].map((option) => (
-              <FilterButton
-                key={option}
-                active={status === option}
-                onClick={() => update(setStatus)(option)}
-              >
-                {option === 'all' ? 'All' : `${option}xx`}
-              </FilterButton>
-            ))}
-          </div>
-          <div className="flex items-center gap-1">
-            <FilterButton active={method === 'all'} onClick={() => update(setMethod)('all')}>
-              All
+    <>
+      <div className="flex flex-wrap items-center gap-3">
+        <Input
+          type="search"
+          placeholder="Search path or IP"
+          value={search}
+          onChange={(event) => update(setSearch)(event.target.value)}
+          className="w-64"
+        />
+        <div className="flex items-center gap-1">
+          {['all', '2', '4', '5'].map((option) => (
+            <FilterButton
+              key={option}
+              active={status === option}
+              onClick={() => update(setStatus)(option)}
+            >
+              {option === 'all' ? 'All' : `${option}xx`}
             </FilterButton>
-            {kinds.map((kind) => (
-              <FilterButton
-                key={kind}
-                active={method === kind}
-                onClick={() => update(setMethod)(kind)}
-              >
-                {kind}
-              </FilterButton>
-            ))}
-          </div>
-          <div className="ml-auto flex items-center gap-3 font-mono text-xs text-muted-foreground">
-            <span className="tabular-nums">
-              {filtered.length === 0 ? 0 : current * perPage + 1}–
-              {Math.min((current + 1) * perPage, filtered.length)} of {filtered.length}
-            </span>
-            <div className="flex items-center gap-1">
-              <PageButton disabled={current === 0} onClick={() => setPage(current - 1)}>
-                ←
-              </PageButton>
-              <PageButton disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>
-                →
-              </PageButton>
-            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <FilterButton active={kind === 'all'} onClick={() => update(setKind)('all')}>
+            All
+          </FilterButton>
+          {kinds.map((option) => (
+            <FilterButton
+              key={option}
+              active={kind === option}
+              onClick={() => update(setKind)(option)}
+            >
+              {option}
+            </FilterButton>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-3 font-mono text-xs text-muted-foreground">
+          <span className="tabular-nums">
+            {filtered.length === 0 ? 0 : current * perPage + 1}–
+            {Math.min((current + 1) * perPage, filtered.length)} of {filtered.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <PageButton disabled={current === 0} onClick={() => setPage(current - 1)}>
+              ←
+            </PageButton>
+            <PageButton disabled={current >= pages - 1} onClick={() => setPage(current + 1)}>
+              →
+            </PageButton>
           </div>
         </div>
-
-        {rows.length === 0 ? (
-          <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border/60 py-10">
-            <p className="font-mono text-xs text-muted-foreground">No matching requests</p>
-          </div>
-        ) : (
-          <LogTable rows={rows} />
-        )}
       </div>
-    </AdminShell>
+
+      {rows.length === 0 ? (
+        <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-border/60 py-10">
+          <p className="font-mono text-xs text-muted-foreground">No matching requests</p>
+        </div>
+      ) : (
+        <LogTable rows={rows} />
+      )}
+    </>
   )
 }
 
