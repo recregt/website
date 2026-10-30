@@ -47,7 +47,8 @@ export async function loadAnalytics<T>(load: () => Promise<T>): Promise<Analytic
 
 export async function publicStats(range: Range, site: URL) {
   const window = windowFor(range, true)
-  return cached(new URL(`/__cache/stats/${range}`, site), window.next, async () => {
+  const key = new URL(`/__cache/stats/${env.CF_VERSION_METADATA.id}/${range}`, site)
+  return cached(key, window.next, async () => {
     const [posts, staff] = await Promise.all([listPosts(), adminHandles()])
     const pages = ['/', '/blog', '/stats', ...posts.map((post) => `/blog/${post.slug}`)]
     const scope = { window, views: pageViews(window, staff) }
