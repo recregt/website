@@ -26,6 +26,11 @@
             type = "app";
             program = pkgs.lib.getExe (pkgs.writeShellApplication { inherit name runtimeInputs text; });
           };
+          browser =
+            name:
+            app name [ pkgs.nodejs_24 pkgs.pnpm ] ''
+              CHROMIUM_PATH=${pkgs.lib.getExe pkgs.chromium} exec node scripts/${name}.ts "$@"
+            '';
         in
         {
           lint = app "lint" [ pkgs.biome ] ''
@@ -37,9 +42,8 @@
           check = app "check" [ pkgs.nodejs_24 pkgs.pnpm pkgs.biome ] ''
             pnpm check
           '';
-          screenshots = app "screenshots" [ pkgs.nodejs_24 ] ''
-            CHROMIUM_PATH=${pkgs.lib.getExe pkgs.chromium} exec node scripts/screenshots.ts "$@"
-          '';
+          screenshots = browser "screenshots";
+          session = browser "session";
         }
       );
 

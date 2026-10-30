@@ -15,6 +15,7 @@ const { values, positionals } = parseArgs({
   options: {
     base: { type: 'string', default: 'http://localhost:5173' },
     out: { type: 'string', default: '.screenshots' },
+    state: { type: 'string' },
   },
 })
 const paths = positionals.length > 0 ? positionals : ['/', '/blog', '/signin', '/stats', '/admin']
@@ -27,7 +28,12 @@ await mkdir(values.out, { recursive: true })
 
 for (const [device, viewport] of Object.entries(viewports)) {
   for (const colorScheme of schemes) {
-    const page = await browser.newPage({ viewport, colorScheme, reducedMotion: 'reduce' })
+    const page = await browser.newPage({
+      viewport,
+      colorScheme,
+      reducedMotion: 'reduce',
+      storageState: values.state,
+    })
     for (const path of paths) {
       await page.goto(new URL(path, values.base).href, { waitUntil: 'load' })
       await page.waitForSelector('html[data-hydrated]', { state: 'attached' })
