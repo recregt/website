@@ -57,6 +57,16 @@ export type Steps = {
     value: Record<string, never>
     error: 'signed_out' | 'not_confirmed' | 'last_credential' | 'not_found'
   }
+  'recovery-rotate': {
+    body: Record<string, never>
+    value: { recoveryCode: string }
+    error: 'signed_out' | 'not_confirmed'
+  }
+  'account-delete': {
+    body: { handle: string }
+    value: Record<string, never>
+    error: 'signed_out' | 'not_confirmed' | 'wrong_handle'
+  }
 }
 
 export type Step = keyof Steps

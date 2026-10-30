@@ -70,6 +70,10 @@ export async function activate(id: string): Promise<boolean> {
   return activated.length === 1
 }
 
+export async function deleteAccount(id: string): Promise<void> {
+  await db.delete(users).where(eq(users.id, id))
+}
+
 export async function release(id: string): Promise<void> {
   await db.delete(users).where(and(eq(users.id, id), eq(users.status, 'pending')))
 }
