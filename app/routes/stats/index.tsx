@@ -1,28 +1,21 @@
 import { Link } from 'react-router'
 
 import { Page } from '~/components/page'
-import { PageHeader } from '~/components/page-header'
 import { Section } from '~/components/section'
 import { cn } from '~/lib/utils'
 
-import { userContext } from '../../server/session.server'
-import {
-  fullStats,
-  loadAnalytics,
-  publicStats,
-  type SiteStats,
-  type StatsDetails,
-} from '../../server/stats.server'
-import { can } from '../auth/access'
-import { TrafficChart } from '../stats/chart'
-import { type Metric, Metrics } from '../stats/metrics'
-import { AnalyticsNotice } from '../stats/notice'
-import { RangeTabs } from '../stats/range-tabs'
-import { parseRange, rangeLabel } from '../stats/ranges'
-import { RankedList } from '../stats/ranked-list'
-import { RecentTable, SlowestTable } from '../stats/tables'
-import { type Rating, rate, type Vital } from '../stats/vitals'
-import type { Route } from './+types/stats'
+import { userContext } from '../../../server/session.server'
+import { fullStats, loadAnalytics, publicStats, type SiteStats } from '../../../server/stats.server'
+import { can } from '../../auth/access'
+import { TrafficChart } from '../../stats/chart'
+import { StatsHeader } from '../../stats/header'
+import { type Metric, Metrics } from '../../stats/metrics'
+import { AnalyticsNotice } from '../../stats/notice'
+import { parseRange, rangeLabel } from '../../stats/ranges'
+import { RankedList } from '../../stats/ranked-list'
+import { RecentTable, SlowestTable } from '../../stats/tables'
+import { type Rating, rate, type Vital } from '../../stats/vitals'
+import type { Route } from './+types/index'
 
 export const meta: Route.MetaFunction = () => [
   { title: 'Stats · recregt' },
@@ -32,25 +25,27 @@ export const meta: Route.MetaFunction = () => [
 export async function loader({ context, request }: Route.LoaderArgs) {
   const site = new URL(request.url)
   const range = parseRange(site.searchParams.get('range'))
-  const full = can(context.get(userContext), 'stats:full')
+  const user = context.get(userContext)
+  const full = can(user, 'stats:full')
   const stats = await loadAnalytics<SiteStats>(() =>
     full ? fullStats(range, site) : publicStats(range, site),
   )
-  return { range, stats }
+  return { range, stats, full, admin: can(user, 'admin') }
 }
 
-export default function StatsPage({ loaderData: { range, stats } }: Route.ComponentProps) {
-  const live = stats.ok && stats.value.details !== null
+export default function StatsPage({
+  loaderData: { range, stats, full, admin },
+}: Route.ComponentProps) {
   return (
     <Page>
-      <PageHeader
-        title="Stats"
+      <StatsHeader
+        range={range}
+        admin={admin}
         description={
-          live
+          full
             ? `Live numbers over ${rangeLabel(range)}, in UTC.`
             : `Anonymized traffic over ${rangeLabel(range)}. Complete ${range === '1d' ? 'hours' : 'days'} only, in UTC.`
         }
-        actions={<RangeTabs range={range} />}
       />
       {stats.ok ? <Stats stats={stats.value} /> : <AnalyticsNotice reason={stats.reason} />}
     </Page>
@@ -120,12 +115,8 @@ function Stats({ stats }: { stats: SiteStats }) {
           <Section
             title="Recent requests"
             action={
-              <Link
-                to="/admin"
-                viewTransition
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                All logs
+              <Link to="/stats/requests" viewTransition className="hover:text-foreground">
+                All requests
               </Link>
             }
           >
