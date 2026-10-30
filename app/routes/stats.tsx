@@ -31,12 +31,11 @@ export const meta: Route.MetaFunction = () => [
 ]
 
 export async function loader({ context, request }: Route.LoaderArgs) {
-  const range = parseRange(new URL(request.url).searchParams.get('range'))
+  const site = new URL(request.url)
+  const range = parseRange(site.searchParams.get('range'))
   const full = can(context.get(userContext), 'stats:full')
   const stats = await loadAnalytics<SiteStats>(() =>
-    full
-      ? fullStats(range)
-      : publicStats(range, new URL(`/__cache/stats/${range}`, request.url), publicPages),
+    full ? fullStats(range, site) : publicStats(range, site, publicPages),
   )
   return { range, stats }
 }

@@ -8,6 +8,7 @@ import {
   engagementDoubles,
   requestBlobs,
   requestDoubles,
+  siteHost,
 } from './analytics.server'
 import { cached } from './cache.server'
 
@@ -19,7 +20,7 @@ const ranked = z.object({ name: z.string(), count })
 const listSize = 10
 
 const documents = `${request.kind} IN ('document', 'navigation')`
-const sitePage = `${request.path} NOT LIKE '/auth/%' AND ${request.path} != '/admin' AND ${request.path} NOT LIKE '/admin/%'`
+const sitePage = `${request.path} NOT LIKE '/auth/%' AND ${request.path} != '/admin' AND ${request.path} NOT LIKE '/admin/%' AND ${request.path} != '/__manifest'`
 const pagePath = /^\/[a-z0-9/-]*$/
 
 const stepMs = { hour: 3_600_000, day: 86_400_000 } as const
@@ -40,17 +41,20 @@ export async function loadAnalytics<T>(load: () => Promise<T>): Promise<Analytic
   }
 }
 
-export async function publicStats(range: Range, cacheKey: URL, pages: () => Promise<string[]>) {
+export async function publicStats(range: Range, site: URL, pages: () => Promise<string[]>) {
   const window = windowFor(range, true)
-  return cached(cacheKey, window.next, async () => ({
-    ...(await overview(window, { kind: 'public', pages: await pages() })),
+  return cached(new URL(`/__cache/stats/${range}`, site), window.next, async () => ({
+    ...(await overview(window, site, { kind: 'public', pages: await pages() })),
     details: null,
   }))
 }
 
-export async function fullStats(range: Range) {
+export async function fullStats(range: Range, site: URL) {
   const window = windowFor(range, false)
-  const [summary, extra] = await Promise.all([overview(window, { kind: 'full' }), details(window)])
+  const [summary, extra] = await Promise.all([
+    overview(window, site, { kind: 'full' }),
+    details(window),
+  ])
   return { ...summary, details: extra }
 }
 
@@ -65,8 +69,14 @@ export async function recentRequests(range: Range, limit: number) {
 
 type Scope = { kind: 'public'; pages: readonly string[] } | { kind: 'full' }
 
-async function overview(window: Window, scope: Scope) {
+async function overview(window: Window, site: URL, scope: Scope) {
   const since = within(window)
+  const own = siteHost(site.hostname)
+  const referrerKey = (referrer: string) => {
+    const from = URL.parse(referrer)
+    if (!from || siteHost(from.hostname) === own) return null
+    return scope.kind === 'public' ? from.hostname : referrer
+  }
   const views = pageViews(since)
   const top = (column: string, where = views) =>
     query(
@@ -105,9 +115,7 @@ async function overview(window: Window, scope: Scope) {
         z.object({ time: z.string(), views: count, visitors: count }),
       ),
       top(request.path, listed),
-      scope.kind === 'public'
-        ? every(request.referrer, external).then((rows) => regroup(rows, referrerHost))
-        : top(request.referrer, external),
+      every(request.referrer, external).then((rows) => regroup(rows, referrerKey)),
       top(request.country),
       scope.kind === 'public'
         ? every(request.browser).then((rows) => regroup(rows, browserFamily))
@@ -247,10 +255,6 @@ function regroup(rows: { name: string; count: number }[], key: (name: string) =>
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, listSize)
-}
-
-function referrerHost(referrer: string): string | null {
-  return URL.parse(referrer)?.hostname || null
 }
 
 function browserFamily(browser: string): string {

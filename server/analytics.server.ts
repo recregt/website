@@ -80,6 +80,7 @@ export const engagementDoubles = [
 type Fields<Names extends readonly string[], Value> = Record<Names[number], Value>
 
 const beaconPath = '/e'
+const manifestPath = '/__manifest'
 
 const browsers: [RegExp, string][] = [
   [/Edg\/(\d+)/, 'Edge'],
@@ -160,10 +161,8 @@ export async function recordRequest(
   const cf = request.cf
   const headers = request.headers
   const agent = describeAgent(headers.get('user-agent') ?? '')
-  const navigation = url.pathname.endsWith('.data')
-
   const blobs: Fields<typeof requestBlobs, string> = {
-    kind: request.method !== 'GET' ? 'action' : navigation ? 'navigation' : 'document',
+    kind: requestKind(request.method, url.pathname),
     path: pagePath(url.pathname),
     method: request.method,
     referrer: referrer(headers.get('referer'), url),
@@ -202,6 +201,12 @@ export async function recordRequest(
   })
 }
 
+function requestKind(method: string, pathname: string): string {
+  if (method !== 'GET') return 'action'
+  if (pathname === manifestPath) return 'manifest'
+  return pathname.endsWith('.data') ? 'navigation' : 'document'
+}
+
 function pagePath(pathname: string): string {
   if (pathname === '/_.data' || pathname === '/_root.data') return '/'
   return pathname.endsWith('.data') ? pathname.slice(0, -'.data'.length) : pathname
@@ -211,7 +216,13 @@ function referrer(header: string | null, url: URL): string {
   if (!header) return ''
   const from = URL.parse(header)
   if (!from) return ''
-  return from.origin === url.origin ? from.pathname : from.href.slice(0, 512)
+  return siteHost(from.hostname) === siteHost(url.hostname)
+    ? from.pathname
+    : from.href.slice(0, 512)
+}
+
+export function siteHost(hostname: string): string {
+  return hostname.replace(/^www\./, '')
 }
 
 function campaign(params: URLSearchParams): string {
