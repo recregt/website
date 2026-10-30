@@ -3,23 +3,31 @@ import 'uplot/dist/uPlot.min.css'
 import { useEffect, useRef } from 'react'
 import uPlot from 'uplot'
 
+import type { SiteStats } from '../../server/stats.server'
+
 const height = 320
 const axisFont = '10px "Geist Mono Variable", monospace'
 
+const tickFormats = {
+  hour: new Intl.DateTimeFormat('en', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'UTC',
+  }),
+  day: new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
+}
+
 export const seriesColors = { views: '#10b981', visitors: '#94a3b8' }
 
-export function TrafficChart({
-  points,
-}: {
-  points: { time: string; views: number; visitors: number }[]
-}) {
+export function TrafficChart({ series: { step, points } }: { series: SiteStats['series'] }) {
   const container = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const element = container.current
     if (!element || points.length === 0) return
     const data: uPlot.AlignedData = [
-      points.map((point) => Date.parse(`${point.time.replace(' ', 'T')}Z`) / 1000),
+      points.map((point) => point.time),
       points.map((point) => point.views),
       points.map((point) => point.visitors),
     ]
@@ -37,12 +45,13 @@ export function TrafficChart({
         padding: [8, 8, 4, 44],
         cursor: { show: false },
         legend: { show: false },
+        tzDate: (seconds) => uPlot.tzDate(new Date(seconds * 1000), 'Etc/UTC'),
         axes: [
           {
             ...axis,
             size: 28,
             values: (_chart, values) =>
-              values.map((value) => uPlot.fmtDate('{MMM} {D}')(new Date(value * 1000))),
+              values.map((value) => tickFormats[step].format(value * 1000)),
           },
           axis,
         ],
@@ -72,7 +81,7 @@ export function TrafficChart({
       resize.disconnect()
       chart.destroy()
     }
-  }, [points])
+  }, [step, points])
 
   return <div ref={container} className="h-80 w-full" />
 }

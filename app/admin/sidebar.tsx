@@ -41,9 +41,11 @@ export function AppSidebar({ user }: { user: User }) {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton isActive={pathname === '/admin'} tooltip="Dashboard">
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
+                <SidebarMenuButton isActive={pathname === '/admin'} tooltip="Dashboard" asChild>
+                  <Link to="/admin">
+                    <LayoutDashboard />
+                    <span>Dashboard</span>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>

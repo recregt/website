@@ -7,7 +7,6 @@ import { columnHelper, DataTable } from './data-table'
 
 type RankedRow = { name: string; count: number; share: number }
 type RecentRow = SiteStats['recent'][number]
-type ReadingRow = SiteStats['content']['reading'][number]
 type SlowRow = SiteStats['performance']['slowest'][number]
 
 const ranked = columnHelper<RankedRow>()
@@ -22,7 +21,7 @@ const rankedColumns = ranked.columns([
   }),
   ranked.accessor('share', {
     header: 'Share',
-    cell: (info) => <Bar value={info.getValue()} max={1} />,
+    cell: (info) => <Bar share={info.getValue()} />,
   }),
 ])
 
@@ -46,23 +45,6 @@ const recentColumns = recent.columns([
   }),
 ])
 
-const reading = columnHelper<ReadingRow>()
-const readingColumns = reading.columns([
-  reading.accessor('name', {
-    header: 'Page',
-    cell: (info) => <span className="block max-w-64 truncate">{info.getValue()}</span>,
-  }),
-  reading.accessor('views', { header: 'Views' }),
-  reading.accessor('visibleMs', {
-    header: 'Avg. visible',
-    cell: (info) => `${(info.getValue() / 1000).toFixed(1)} s`,
-  }),
-  reading.accessor('scrollDepth', {
-    header: 'Avg. scroll',
-    cell: (info) => <Bar value={info.getValue()} max={100} />,
-  }),
-])
-
 const slow = columnHelper<SlowRow>()
 const slowColumns = slow.columns([
   slow.accessor('name', {
@@ -72,10 +54,6 @@ const slowColumns = slow.columns([
   slow.accessor('ms', { header: 'Avg.', cell: (info) => `${Math.round(info.getValue())} ms` }),
   slow.accessor('count', { header: 'Requests' }),
 ])
-
-export function Reading({ rows }: { rows: ReadingRow[] }) {
-  return <DataTable columns={readingColumns} data={rows} />
-}
 
 export function Slowest({ rows }: { rows: SlowRow[] }) {
   return <DataTable columns={slowColumns} data={rows} />
@@ -108,8 +86,7 @@ export function StatusBadge({ status }: { status: number }) {
   )
 }
 
-function Bar({ value, max }: { value: number; max: number }) {
-  const share = Math.max(0, Math.min(1, value / max))
+function Bar({ share }: { share: number }) {
   return (
     <div className="flex items-center gap-2.5">
       <div className="h-1 w-24 overflow-hidden rounded-full bg-[#1f2023]">

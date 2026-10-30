@@ -16,132 +16,117 @@ const engagement = columns(engagementBlobs, engagementDoubles)
 const count = z.coerce.number()
 const ranked = z.object({ name: z.string(), count })
 
-export function analyticsConfigured(): boolean {
-  return Boolean(env.ANALYTICS_TOKEN)
+const stepMs = { hour: 3_600_000, day: 86_400_000 } as const
+type Step = keyof typeof stepMs
+
+export type AnalyticsProblem = 'unconfigured' | 'unavailable'
+export type AnalyticsResult<T> = { ok: true; value: T } | { ok: false; reason: AnalyticsProblem }
+
+export async function loadAnalytics<T>(load: () => Promise<T>): Promise<AnalyticsResult<T>> {
+  if (!env.ANALYTICS_TOKEN) return { ok: false, reason: 'unconfigured' }
+  try {
+    return { ok: true, value: await load() }
+  } catch (error) {
+    console.error(error)
+    return { ok: false, reason: 'unavailable' }
+  }
 }
 
 export async function siteStats(range: Range) {
-  const since = `timestamp > NOW() - INTERVAL '${ranges[range]}' DAY`
-  const views = `${since} AND ${request.kind} IN ('document', 'navigation') AND ${request.status} = 200 AND ${request.bot} = 0 AND ${request.path} NOT LIKE '/auth/%'`
-  const top = (column: string, where = views, limit = 10) =>
+  const since = sinceClause(range)
+  const documents = `${request.kind} IN ('document', 'navigation')`
+  const sitePage = `${request.path} NOT LIKE '/auth/%' AND ${request.path} != '/admin' AND ${request.path} NOT LIKE '/admin/%'`
+  const views = `${since} AND ${documents} AND ${request.status} = 200 AND ${request.bot} = 0 AND ${sitePage}`
+  const step: Step = range === '1d' ? 'hour' : 'day'
+
+  const top = (column: string, where = views) =>
     query(
-      `SELECT ${column} AS name, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${where} AND ${column} != '' GROUP BY name ORDER BY count DESC LIMIT ${limit}`,
+      `SELECT ${column} AS name, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${where} AND ${column} != '' GROUP BY name ORDER BY count DESC LIMIT 10`,
       ranked,
     )
-  const vital = async (column: string, where: string) => {
+  const vital = async (column: string) => {
     const [row] = await query(
-      `SELECT quantileWeighted(0.75)(${column}, _sample_interval) AS p75 FROM recregt_engagement WHERE ${since} AND ${where}`,
+      `SELECT quantileWeighted(0.75)(${column}, _sample_interval) AS p75 FROM recregt_engagement WHERE ${since} AND ${column} > 0`,
       z.object({ p75: z.coerce.number().nullable() }),
     )
     return row?.p75 ?? null
   }
-  const topEngagement = (column: string, limit = 10) =>
-    query(
-      `SELECT ${column} AS name, COUNT(DISTINCT ${engagement.pageView}) AS count FROM recregt_engagement WHERE ${since} AND ${column} != '' GROUP BY name ORDER BY count DESC LIMIT ${limit}`,
-      ranked,
-    )
 
   const [
     totals,
+    bots,
     series,
     pages,
     referrers,
-    campaigns,
     countries,
     cities,
-    networks,
+    languages,
     browsers,
     systems,
     devices,
-    languages,
-    notFound,
-    slowest,
-    reading,
-    vitals,
-    gpus,
     screens,
-    timezones,
-    colorSchemes,
-    connections,
+    slowest,
+    vitals,
     recent,
   ] = await Promise.all([
     query(
-      `SELECT SUM(_sample_interval) AS views, COUNT(DISTINCT index1) AS visitors, SUM(_sample_interval * ${request.signedIn}) AS signedIn, SUM(_sample_interval * ${request.bot}) AS bots FROM recregt_requests WHERE ${since} AND ${request.kind} IN ('document', 'navigation')`,
-      z.object({ views: count, visitors: count, signedIn: count, bots: count }),
+      `SELECT SUM(_sample_interval) AS views, COUNT(DISTINCT index1) AS visitors, SUM(_sample_interval * ${request.signedIn}) AS signedIn FROM recregt_requests WHERE ${views}`,
+      z.object({ views: count, visitors: count, signedIn: count }),
     ),
     query(
-      `SELECT ${range === '1d' ? 'toStartOfHour' : 'toStartOfDay'}(timestamp) AS time, SUM(_sample_interval) AS views, COUNT(DISTINCT index1) AS visitors FROM recregt_requests WHERE ${views} GROUP BY time ORDER BY time`,
+      `SELECT SUM(_sample_interval) AS bots FROM recregt_requests WHERE ${since} AND ${documents} AND ${request.bot} = 1`,
+      z.object({ bots: count }),
+    ),
+    query(
+      `SELECT ${step === 'hour' ? 'toStartOfHour' : 'toStartOfDay'}(timestamp) AS time, SUM(_sample_interval) AS views, COUNT(DISTINCT index1) AS visitors FROM recregt_requests WHERE ${views} GROUP BY time ORDER BY time`,
       z.object({ time: z.string(), views: count, visitors: count }),
     ),
     top(request.path),
     top(request.referrer, `${views} AND ${request.referrer} NOT LIKE '/%'`),
-    top(request.campaign),
     top(request.country),
     query(
       `SELECT ${request.city} AS city, ${request.country} AS country, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${views} AND ${request.city} != '' GROUP BY city, country ORDER BY count DESC LIMIT 10`,
       z.object({ city: z.string(), country: z.string(), count }),
     ),
-    top(request.asOrganization),
+    top(request.language),
     top(request.browser),
     top(request.os),
     top(request.device),
-    top(request.language),
-    top(request.path, `${since} AND ${request.status} = 404`, 20),
-    query(
-      `SELECT ${request.path} AS name, AVG(${request.durationMs}) AS ms, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${since} AND ${request.durationMs} > 0 GROUP BY name ORDER BY ms DESC LIMIT 10`,
-      z.object({ name: z.string(), ms: count, count }),
-    ),
-    query(
-      `SELECT path AS name, COUNT() AS views, AVG(visible) AS visibleMs, AVG(depth) AS scrollDepth FROM (SELECT ${engagement.pageView}, ${engagement.path} AS path, MAX(${engagement.visibleMs}) AS visible, MAX(${engagement.scrollDepth}) AS depth FROM recregt_engagement WHERE ${since} GROUP BY ${engagement.pageView}, path) GROUP BY name ORDER BY views DESC LIMIT 10`,
-      z.object({ name: z.string(), views: count, visibleMs: count, scrollDepth: count }),
-    ),
-    Promise.all([
-      vital(engagement.ttfbMs, `${engagement.ttfbMs} > 0`),
-      vital(engagement.fcpMs, `${engagement.fcpMs} > 0`),
-      vital(engagement.lcpMs, `${engagement.lcpMs} > 0`),
-      vital(engagement.cls, `${engagement.loadType} != 'client'`),
-      vital(engagement.slowestInteractionMs, `${engagement.slowestInteractionMs} > 0`),
-    ]),
-    topEngagement(engagement.gpuRenderer),
     query(
       `SELECT ${engagement.screenWidth} AS width, ${engagement.screenHeight} AS height, COUNT(DISTINCT ${engagement.pageView}) AS count FROM recregt_engagement WHERE ${since} GROUP BY width, height ORDER BY count DESC LIMIT 10`,
       z.object({ width: count, height: count, count }),
     ),
-    topEngagement(engagement.timezone),
-    topEngagement(engagement.colorScheme),
-    topEngagement(engagement.connection),
-    recentRequests(range),
+    query(
+      `SELECT ${request.path} AS name, AVG(${request.durationMs}) AS ms, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${since} AND ${request.durationMs} > 0 AND ${sitePage} GROUP BY name ORDER BY ms DESC LIMIT 10`,
+      z.object({ name: z.string(), ms: count, count }),
+    ),
+    Promise.all([vital(engagement.ttfbMs), vital(engagement.fcpMs), vital(engagement.lcpMs)]),
+    recentRequests(range, 10),
   ])
 
   return {
-    totals: totals[0] ?? { views: 0, visitors: 0, signedIn: 0, bots: 0 },
-    series,
+    totals: {
+      views: totals[0]?.views ?? 0,
+      visitors: totals[0]?.visitors ?? 0,
+      signedIn: totals[0]?.signedIn ?? 0,
+      bots: bots[0]?.bots ?? 0,
+    },
+    series: { step, points: timeline(series, step, ranges[range]) },
+    pages,
+    referrers,
     audience: {
       countries,
       cities: cities.map(({ city, country, count }) => ({ name: `${city}, ${country}`, count })),
-      networks,
       languages,
-      timezones,
     },
-    sources: { referrers, campaigns },
-    content: { pages, reading, notFound },
     technology: {
       browsers,
       systems,
       devices,
-      gpus,
       screens: screens.map(({ width, height, count }) => ({ name: `${width}×${height}`, count })),
-      colorSchemes,
-      connections,
     },
     performance: {
-      vitals: {
-        ttfbMs: vitals[0],
-        fcpMs: vitals[1],
-        lcpMs: vitals[2],
-        cls: vitals[3],
-        interactionMs: vitals[4],
-      },
+      vitals: { ttfbMs: vitals[0], fcpMs: vitals[1], lcpMs: vitals[2] },
       slowest,
     },
     recent,
@@ -150,10 +135,9 @@ export async function siteStats(range: Range) {
 
 export type SiteStats = Awaited<ReturnType<typeof siteStats>>
 
-export async function recentRequests(range: Range) {
-  const since = `timestamp > NOW() - INTERVAL '${ranges[range]}' DAY`
+export async function recentRequests(range: Range, limit: number) {
   return query(
-    `SELECT timestamp, ${request.kind} AS kind, ${request.path} AS path, ${request.status} AS status, ${request.durationMs} AS durationMs, ${request.ip} AS ip, ${request.city} AS city, ${request.country} AS country, ${request.asOrganization} AS network, ${request.browser} AS browser, ${request.os} AS os, ${request.device} AS device, ${request.handle} AS handle, ${request.referrer} AS referrer, ${request.bot} AS bot FROM recregt_requests WHERE ${since} ORDER BY timestamp DESC LIMIT 200`,
+    `SELECT timestamp, ${request.kind} AS kind, ${request.path} AS path, ${request.status} AS status, ${request.durationMs} AS durationMs, ${request.ip} AS ip, ${request.city} AS city, ${request.country} AS country, ${request.asOrganization} AS network, ${request.browser} AS browser, ${request.os} AS os, ${request.device} AS device, ${request.handle} AS handle, ${request.referrer} AS referrer, ${request.bot} AS bot FROM recregt_requests WHERE ${sinceClause(range)} ORDER BY timestamp DESC LIMIT ${limit}`,
     z.object({
       timestamp: z.string(),
       kind: z.string(),
@@ -172,6 +156,27 @@ export async function recentRequests(range: Range) {
       bot: count,
     }),
   )
+}
+
+function sinceClause(range: Range): string {
+  return `timestamp > NOW() - INTERVAL '${ranges[range]}' DAY`
+}
+
+function timeline(
+  rows: { time: string; views: number; visitors: number }[],
+  step: Step,
+  days: number,
+) {
+  const size = stepMs[step]
+  const now = Date.now()
+  const first = Math.floor((now - days * stepMs.day) / size) * size
+  const last = Math.floor(now / size) * size
+  const found = new Map(rows.map((row) => [Date.parse(`${row.time.replace(' ', 'T')}Z`), row]))
+  return Array.from({ length: (last - first) / size + 1 }, (_, index) => {
+    const time = first + index * size
+    const row = found.get(time)
+    return { time: time / 1000, views: row?.views ?? 0, visitors: row?.visitors ?? 0 }
+  })
 }
 
 const reply = z.object({ data: z.array(z.unknown()) })

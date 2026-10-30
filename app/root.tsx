@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import {
   isRouteErrorResponse,
+  Link,
   Links,
   Meta,
   Outlet,
@@ -68,6 +69,14 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
       <h1 className="font-heading text-3xl font-semibold tracking-tight">
         {notFound ? 'Not found' : 'Something went wrong'}
       </h1>
+      <p className="mt-6 font-mono text-sm">
+        <Link
+          to="/"
+          className="text-ring underline decoration-ring/50 underline-offset-4 hover:decoration-ring"
+        >
+          ← Back home
+        </Link>
+      </p>
     </main>
   )
 }
