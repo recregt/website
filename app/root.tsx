@@ -36,12 +36,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <script
-          nonce={nonce}
-          suppressHydrationWarning
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: the script is our own compiled function, with no user input
-          dangerouslySetInnerHTML={{ __html: assetGuard }}
-        />
+        <script nonce={nonce} suppressHydrationWarning>
+          {assetGuard}
+        </script>
         <Meta />
         <Links />
       </head>
