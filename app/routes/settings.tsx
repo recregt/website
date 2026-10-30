@@ -13,7 +13,9 @@ import { clearCookie, sessionCookie } from '../../server/session.server'
 import { findAccount, renameAccount } from '../../server/users.server'
 import { handleRules, normalizeHandle } from '../auth/protocol'
 import { postDate } from '../blog/list'
+import { DeleteAccount } from '../settings/delete-account'
 import { Passkeys } from '../settings/passkeys'
+import { Recovery } from '../settings/recovery'
 import type { Route } from './+types/settings'
 
 type RenameError = 'invalid_handle' | 'handle_taken'
@@ -89,6 +91,8 @@ export default function Settings({
 
       <Passkeys passkeys={passkeys} limit={passkeyLimit} />
 
+      <Recovery />
+
       <Section title="Sessions">
         <div className="flex flex-col items-start gap-4">
           <p className="text-sm text-muted-foreground">
@@ -98,6 +102,8 @@ export default function Settings({
           <SignOutEverywhere />
         </div>
       </Section>
+
+      <DeleteAccount handle={handle} />
     </Page>
   )
 }

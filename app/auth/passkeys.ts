@@ -41,6 +41,14 @@ export function removePasskey(id: string) {
   return confirmed(() => post('passkey-remove', { id }))
 }
 
+export function rotateRecoveryCode() {
+  return confirmed(() => post('recovery-rotate', {}))
+}
+
+export function deleteAccount(handle: string) {
+  return confirmed(() => post('account-delete', { handle }))
+}
+
 async function confirmed<S extends Step>(attempt: () => Promise<Reply<S>>) {
   const first = await attempt()
   if (first.ok || first.error !== 'not_confirmed') return first

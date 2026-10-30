@@ -11,25 +11,7 @@ import type { Passkey } from '../../server/passkeys.server'
 import { addPasskey, removePasskey, renamePasskey } from '../auth/passkeys'
 import { passkeyNameLength } from '../auth/protocol'
 import { postDate } from '../blog/list'
-
-type Failure = Extract<
-  | Awaited<ReturnType<typeof addPasskey>>
-  | Awaited<ReturnType<typeof removePasskey>>
-  | Awaited<ReturnType<typeof renamePasskey>>,
-  { ok: false }
->['error']
-
-const failures: Record<Failure, string> = {
-  cancelled: 'Cancelled.',
-  signed_out: 'You were signed out. Sign in again to manage passkeys.',
-  ceremony_failed: 'The passkey could not be verified. Try again.',
-  not_confirmed: 'Confirm with your passkey to continue.',
-  credential_limit: 'You have reached the passkey limit. Remove one first.',
-  already_exists: 'That passkey is already on your account.',
-  last_credential: 'Your only passkey cannot be removed.',
-  not_found: 'That passkey is no longer on your account.',
-  invalid_name: `Names are 1 to ${passkeyNameLength} characters.`,
-}
+import { type Failure, failures, unexpected } from './messages'
 
 type Message = { tone: 'error' | 'success'; text: string }
 
@@ -56,7 +38,7 @@ export function Passkeys({ passkeys, limit }: { passkeys: Passkey[]; limit: numb
         setMessage({ tone: 'error', text: failures[result.error] })
       }
     } catch {
-      setMessage({ tone: 'error', text: 'Something went wrong. Try again in a moment.' })
+      setMessage({ tone: 'error', text: unexpected })
     } finally {
       setBusy(null)
     }

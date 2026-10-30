@@ -24,6 +24,7 @@ import {
 import { verifyHuman } from './turnstile.server'
 import {
   activate,
+  deleteAccount,
   findAccount,
   findAccountByHandle,
   findOldestPending,
@@ -55,6 +56,8 @@ const bodies: { [S in Step]: z.ZodType<Steps[S]['body']> } = {
   'passkey-finish': z.object({ credential }),
   'passkey-rename': z.object({ id: z.string().min(1), name: z.string() }),
   'passkey-remove': z.object({ id: z.string().min(1) }),
+  'recovery-rotate': empty,
+  'account-delete': z.object({ handle: z.string() }),
 }
 
 const handlers: { [S in Step]: Handler<S> } = {
@@ -205,6 +208,26 @@ const handlers: { [S in Step]: Handler<S> } = {
     if (!removed.ok) return refuse(removed.error)
     await forgetPasskey(user.id, body.id)
     return { reply: { ok: true, value: {} }, cookies: [] }
+  },
+
+  'recovery-rotate': async (_body, request, user) => {
+    if (!user) return refuse('signed_out')
+    if (!(await isConfirmed(request, user))) return refuse('not_confirmed')
+    const code = await parvus.rotateCode(user.id)
+    if (!code.ok) return refuse('signed_out')
+    return { reply: { ok: true, value: { recoveryCode: code.value.recovery_code } }, cookies: [] }
+  },
+
+  'account-delete': async (body, request, user) => {
+    if (!user) return refuse('signed_out')
+    if (!(await isConfirmed(request, user))) return refuse('not_confirmed')
+    if (normalizeHandle(body.handle) !== user.handle) return refuse('wrong_handle')
+    await deleteAccount(user.id)
+    await parvus.deleteUser(user.id)
+    return {
+      reply: { ok: true, value: {} },
+      cookies: [await clearCookie(sessionCookie), await clearCookie(confirmCookie)],
+    }
   },
 }
 

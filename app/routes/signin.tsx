@@ -1,9 +1,10 @@
-import { Check, Copy, KeyRound } from 'lucide-react'
+import { KeyRound } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { redirect, useNavigate } from 'react-router'
 
 import { Page } from '~/components/page'
 import { PageHeader } from '~/components/page-header'
+import { RecoveryCode } from '~/components/recovery-code'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 
@@ -80,12 +81,7 @@ export default function SignIn({ loaderData: { next, siteKey } }: Route.Componen
           description="It is the only way back in if you lose every device with your passkey."
         />
         <div className="flex max-w-sm flex-col gap-4">
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-muted py-2 pr-2 pl-4">
-            <code className="min-w-0 flex-1 overflow-x-auto font-mono text-sm">
-              {recovery.code}
-            </code>
-            <CopyButton text={recovery.code} />
-          </div>
+          <RecoveryCode code={recovery.code} />
           <Button
             className="h-11 w-full"
             disabled={busy}
@@ -169,19 +165,5 @@ export default function SignIn({ loaderData: { next, siteKey } }: Route.Componen
         )}
       </div>
     </Page>
-  )
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-  }
-  return (
-    <Button variant="ghost" size="sm" onClick={() => copy().catch(() => setCopied(false))}>
-      {copied ? <Check /> : <Copy />}
-      {copied ? 'Copied' : 'Copy'}
-    </Button>
   )
 }
