@@ -1,3 +1,4 @@
+import { useContext } from 'react'
 import {
   isRouteErrorResponse,
   Link,
@@ -17,6 +18,7 @@ import type { User } from '../server/schema.server'
 import { sessionMiddleware, userContext } from '../server/session.server'
 import type { Route } from './+types/root'
 import { useEngagement } from './analytics/engagement'
+import { assetGuard, NonceContext } from './asset-guard'
 import { deniedCapability } from './auth/access'
 import './app.css'
 
@@ -28,11 +30,18 @@ export function loader({ context }: Route.LoaderArgs) {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const user = useRouteLoaderData<typeof loader>('root')?.user ?? null
+  const nonce = useContext(NonceContext)
   return (
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: the script is our own compiled function, with no user input
+          dangerouslySetInnerHTML={{ __html: assetGuard }}
+        />
         <Meta />
         <Links />
       </head>
