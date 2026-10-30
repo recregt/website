@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
 import { redirect, useNavigate } from 'react-router'
 
+import { Page } from '~/components/page'
 import { PageHeader } from '~/components/page-header'
 import { Button } from '~/components/ui/button'
-import { Card, CardContent } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
 
 import { userContext } from '../../server/session.server'
@@ -72,35 +72,33 @@ export default function SignIn({ loaderData: { next, siteKey } }: Route.Componen
 
   if (recovery) {
     return (
-      <main className="mx-auto max-w-md px-6 py-20">
+      <Page narrow>
         <PageHeader
           title="Save your recovery code"
           description="It is the only way back in if you lose every device with your passkey."
         />
-        <pre className="mt-6 overflow-x-auto rounded-lg border border-border bg-muted p-4 font-mono text-sm">
-          {recovery.code}
-        </pre>
-        <Button
-          className="mt-6"
-          disabled={busy}
-          onClick={recovery.signedIn ? () => navigate(next) : signIn}
-        >
-          {recovery.signedIn ? 'I saved it, continue' : 'I saved it, sign me in'}
-        </Button>
-        {message && (
-          <p role="alert" className="mt-4 text-sm text-destructive">
-            {message}
-          </p>
-        )}
-      </main>
+        <div className="flex max-w-md flex-col items-start gap-6">
+          <pre className="w-full overflow-x-auto rounded-xl border border-border bg-muted p-4 font-mono text-sm">
+            {recovery.code}
+          </pre>
+          <Button disabled={busy} onClick={recovery.signedIn ? () => navigate(next) : signIn}>
+            {recovery.signedIn ? 'I saved it, continue' : 'I saved it, sign me in'}
+          </Button>
+          {message && (
+            <p role="alert" className="text-sm text-destructive">
+              {message}
+            </p>
+          )}
+        </div>
+      </Page>
     )
   }
 
   return (
-    <main className="mx-auto max-w-md px-6 py-20">
-      <PageHeader title="Sign in" />
-      <Card className="mt-6">
-        <CardContent className="space-y-4">
+    <Page narrow>
+      <PageHeader title="Sign in" description="Use the passkey saved on your device." />
+      <div className="flex max-w-md flex-col gap-4">
+        <div className="space-y-4 rounded-xl border border-border bg-card p-5">
           <Button className="w-full" disabled={busy} onClick={signIn}>
             Sign in with a passkey
           </Button>
@@ -112,9 +110,7 @@ export default function SignIn({ loaderData: { next, siteKey } }: Route.Componen
                 signUp(String(new FormData(event.currentTarget).get('handle')), human.token)
             }}
           >
-            <p className="font-mono text-xs tracking-wide text-muted-foreground uppercase">
-              New here?
-            </p>
+            <p className="text-sm font-medium">New here? Create an account.</p>
             <label htmlFor="handle" className="block space-y-1.5 text-sm">
               Handle
               <Input id="handle" name="handle" required autoComplete="username" />
@@ -129,13 +125,13 @@ export default function SignIn({ loaderData: { next, siteKey } }: Route.Componen
               Create an account
             </Button>
           </form>
-        </CardContent>
-      </Card>
-      {message && (
-        <p role="alert" className="mt-4 text-sm text-destructive">
-          {message}
-        </p>
-      )}
-    </main>
+        </div>
+        {message && (
+          <p role="alert" className="text-sm text-destructive">
+            {message}
+          </p>
+        )}
+      </div>
+    </Page>
   )
 }

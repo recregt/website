@@ -3,7 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
-@import "@fontsource-variable/newsreader/opsz-italic.css";
+@import "@fontsource-variable/newsreader/opsz.css";
 
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
@@ -22,6 +22,7 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -81,6 +82,7 @@
   --accent-foreground: #09090b;
   --destructive: #dc2626;
   --success: #047857;
+  --warning: #b45309;
   --border: #e4e4e7;
   --input: #e4e4e7;
   --ring: #047857;
@@ -110,6 +112,7 @@
     --accent-foreground: #f4f4f5;
     --destructive: #f43f5e;
     --success: #34d399;
+    --warning: #fbbf24;
     --border: #26272b;
     --input: #26272b;
     --ring: #10b981;

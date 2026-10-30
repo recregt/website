@@ -1,14 +1,10 @@
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
-import { type ReactNode, useMemo } from 'react'
 import { Link } from 'react-router'
 
+import { Page } from '~/components/page'
 import { PageHeader } from '~/components/page-header'
 import { Section } from '~/components/section'
-import { Card, CardContent, CardHeader } from '~/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
 import { cn } from '~/lib/utils'
 
-import { listPosts } from '../../server/blog.server'
 import { userContext } from '../../server/session.server'
 import {
   fullStats,
@@ -18,11 +14,14 @@ import {
   type StatsDetails,
 } from '../../server/stats.server'
 import { can } from '../auth/access'
-import { Sparkline, seriesTokens, TrafficChart } from '../stats/chart'
+import { TrafficChart } from '../stats/chart'
+import { type Metric, Metrics } from '../stats/metrics'
 import { AnalyticsNotice } from '../stats/notice'
 import { RangeTabs } from '../stats/range-tabs'
-import { parseRange, type Range, rangeLabel } from '../stats/ranges'
-import { Ranked, Recent, Slowest } from '../stats/tables'
+import { parseRange, rangeLabel } from '../stats/ranges'
+import { RankedList } from '../stats/ranked-list'
+import { RecentTable, SlowestTable } from '../stats/tables'
+import { type Rating, rate, type Vital } from '../stats/vitals'
 import type { Route } from './+types/stats'
 
 export const meta: Route.MetaFunction = () => [
@@ -35,255 +34,155 @@ export async function loader({ context, request }: Route.LoaderArgs) {
   const range = parseRange(site.searchParams.get('range'))
   const full = can(context.get(userContext), 'stats:full')
   const stats = await loadAnalytics<SiteStats>(() =>
-    full ? fullStats(range, site) : publicStats(range, site, publicPages),
+    full ? fullStats(range, site) : publicStats(range, site),
   )
   return { range, stats }
 }
 
-async function publicPages(): Promise<string[]> {
-  const posts = await listPosts()
-  return ['/', '/blog', '/stats', ...posts.map((post) => `/blog/${post.slug}`)]
-}
-
 export default function StatsPage({ loaderData: { range, stats } }: Route.ComponentProps) {
+  const live = stats.ok && stats.value.details !== null
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
+    <Page>
       <PageHeader
-        eyebrow="Analytics"
         title="Stats"
         description={
-          stats.ok && stats.value.details
-            ? `Everything over ${rangeLabel(range)}, live, in UTC.`
+          live
+            ? `Live numbers over ${rangeLabel(range)}, in UTC.`
             : `Anonymized traffic over ${rangeLabel(range)}. Complete ${range === '1d' ? 'hours' : 'days'} only, in UTC.`
         }
         actions={<RangeTabs range={range} />}
       />
       {stats.ok ? <Stats stats={stats.value} /> : <AnalyticsNotice reason={stats.reason} />}
-    </main>
+    </Page>
   )
 }
 
 function Stats({ stats }: { stats: SiteStats }) {
-  const points = stats.series.points
-  const views = useMemo(() => points.map((point) => point.views), [points])
-  const visitors = useMemo(() => points.map((point) => point.visitors), [points])
   const total = stats.totals.views
   const details = stats.details
+  const totals: Metric[] = [
+    { label: 'Views', value: count(total) },
+    { label: 'Visitors', value: count(stats.totals.visitors) },
+    ...(details
+      ? [
+          { label: 'Signed-in views', value: count(details.signedInViews) },
+          { label: 'Bot requests', value: count(details.botRequests) },
+        ]
+      : []),
+  ]
   return (
     <>
-      <div className={cn('grid gap-4 sm:grid-cols-2', details && 'xl:grid-cols-4')}>
-        <StatCard
-          label="Views"
-          value={total}
-          delta={delta(views)}
-          spark={<Sparkline values={views} token={seriesTokens.views} />}
-        />
-        <StatCard
-          label="Visitors"
-          value={stats.totals.visitors}
-          delta={delta(visitors)}
-          spark={<Sparkline values={visitors} token={seriesTokens.visitors} />}
-        />
-        {details && (
-          <>
-            <StatCard label="Signed-in views" value={details.signedInViews} delta={null} />
-            <StatCard label="Bot requests" value={details.botRequests} delta={null} />
-          </>
-        )}
-      </div>
+      <Metrics items={totals} className={cn('grid-cols-2', details && 'lg:grid-cols-4')} />
 
-      <Section
-        title="Traffic"
-        action={
-          <span className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
-            <span className="size-2 rounded-full bg-chart-1" />
-            Views
-            <span className="ml-2 size-2 rounded-full bg-chart-2" />
-            Visitors
-          </span>
-        }
-      >
+      <Section title="Traffic">
         <TrafficChart series={stats.series} />
       </Section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Section title="Top pages">
-          <Ranked rows={stats.pages} total={total} />
+      <div className="gap-6 md:columns-2 [&>section]:mb-6 [&>section]:break-inside-avoid">
+        <Section title="Pages">
+          <RankedList rows={stats.pages} total={total} />
         </Section>
-        <Section title="Referrers">
-          <Ranked rows={stats.referrers} total={total} />
+        {details && (
+          <Section title="Referrers">
+            <RankedList rows={details.referrers} total={total} />
+          </Section>
+        )}
+        <Section title="Countries">
+          <RankedList rows={stats.countries} total={total} />
         </Section>
+        {details && (
+          <Section title="Cities">
+            <RankedList rows={details.cities} total={total} />
+          </Section>
+        )}
+        <Section title="Browsers">
+          <RankedList rows={stats.browsers} total={total} />
+        </Section>
+        <Section title="Devices">
+          <RankedList rows={stats.devices} total={total} />
+        </Section>
+        {details && <DetailLists details={details} total={total} />}
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <TabsSection
-          title="Audience"
-          tabs={[
-            { label: 'Countries', content: <Ranked rows={stats.countries} total={total} /> },
-            ...(details ? detailAudience(details, total) : []),
-          ]}
-        />
-        <TabsSection
-          title="Technology"
-          tabs={[
-            { label: 'Browsers', content: <Ranked rows={stats.browsers} total={total} /> },
-            { label: 'Devices', content: <Ranked rows={stats.devices} total={total} /> },
-            ...(details ? detailTechnology(details, total) : []),
-          ]}
-        />
-      </div>
-
-      <Section title="Performance" description="75th percentile across page views.">
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-3 gap-3">
-            <Vital label="TTFB" value={stats.vitals.ttfbMs} />
-            <Vital label="FCP" value={stats.vitals.fcpMs} />
-            <Vital label="LCP" value={stats.vitals.lcpMs} />
-          </div>
-          {details && (
-            <div className="border-t border-border pt-4">
-              <p className="pb-2 text-xs text-muted-foreground">Slowest requests</p>
-              <Slowest rows={details.slowest} />
-            </div>
-          )}
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-sm font-medium">Performance</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            75th percentile across page views, rated against Core Web Vitals thresholds.
+          </p>
         </div>
-      </Section>
+        <Metrics
+          className="sm:grid-cols-3"
+          items={[
+            vital('Time to first byte', 'ttfbMs', stats.vitals.ttfbMs),
+            vital('First contentful paint', 'fcpMs', stats.vitals.fcpMs),
+            vital('Largest contentful paint', 'lcpMs', stats.vitals.lcpMs),
+          ]}
+        />
+      </section>
 
       {details && (
-        <Section
-          title="Recent requests"
-          action={
-            <Link
-              to="/admin"
-              viewTransition
-              className="font-mono text-xs text-muted-foreground hover:text-foreground"
-            >
-              View all →
-            </Link>
-          }
-        >
-          <Recent rows={details.recent} />
-        </Section>
+        <>
+          <Section title="Slowest requests" description="Average response time per path.">
+            <SlowestTable rows={details.slowest} />
+          </Section>
+          <Section
+            title="Recent requests"
+            action={
+              <Link
+                to="/admin"
+                viewTransition
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                All logs
+              </Link>
+            }
+          >
+            <RecentTable rows={details.recent} />
+          </Section>
+        </>
       )}
     </>
   )
 }
 
-function detailAudience(details: StatsDetails, total: number) {
-  return [
-    { label: 'Cities', content: <Ranked rows={details.cities} total={total} /> },
-    { label: 'Languages', content: <Ranked rows={details.languages} total={total} /> },
-  ]
-}
-
-function detailTechnology(details: StatsDetails, total: number) {
-  return [
-    { label: 'Operating systems', content: <Ranked rows={details.systems} total={total} /> },
-    {
-      label: 'Screens',
-      content: <Ranked rows={details.screens.rows} total={details.screens.measuredViews} />,
-    },
-  ]
-}
-
-function StatCard({
-  label,
-  value,
-  delta: change,
-  spark,
-}: {
-  label: string
-  value: number
-  delta: number | null
-  spark?: ReactNode
-}) {
+function DetailLists({ details, total }: { details: StatsDetails; total: number }) {
   return (
-    <Card className="transition-shadow hover:ring-ring/30">
-      <CardHeader className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <Trend value={change} />
-        </div>
-        <p className="text-2xl font-semibold tracking-tight tabular-nums">
-          {value.toLocaleString()}
-        </p>
-      </CardHeader>
-      {spark && <CardContent className="px-4 pt-0 pb-4">{spark}</CardContent>}
-    </Card>
+    <>
+      <Section title="Operating systems">
+        <RankedList rows={details.systems} total={total} />
+      </Section>
+      <Section title="Screens">
+        <RankedList rows={details.screens.rows} total={details.screens.measuredViews} />
+      </Section>
+      <Section title="Languages">
+        <RankedList rows={details.languages} total={total} />
+      </Section>
+    </>
   )
 }
 
-function Trend({ value }: { value: number | null }) {
-  if (value === null) return <span className="text-xs text-muted-foreground">—</span>
-  const up = value >= 0
-  const Icon = up ? ArrowUpRight : ArrowDownRight
-  return (
-    <span
-      className={cn(
-        'flex items-center gap-0.5 text-xs tabular-nums',
-        up ? 'text-success' : 'text-destructive',
-      )}
-      title="Second half vs first half of the range"
-    >
-      <Icon className="size-3" />
-      {Math.abs(value).toFixed(1)}%
-    </span>
-  )
+const ratings: Record<Rating, { label: string; dot: string }> = {
+  good: { label: 'Good', dot: 'bg-success' },
+  'needs improvement': { label: 'Needs improvement', dot: 'bg-warning' },
+  poor: { label: 'Poor', dot: 'bg-destructive' },
 }
 
-function Vital({ label, value }: { label: string; value: number | null }) {
-  return (
-    <div className="rounded-md border border-border bg-muted/40 p-3">
-      <p className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
-        {label}
-      </p>
-      <p className="mt-1 text-lg font-semibold tabular-nums">
-        {value === null ? '—' : `${Math.round(value)} ms`}
-      </p>
-    </div>
-  )
+function vital(label: string, key: Vital, value: number | null): Metric {
+  if (value === null) return { label, value: '—', detail: 'No data yet' }
+  const rating = ratings[rate(key, value)]
+  return {
+    label,
+    value: `${Math.round(value).toLocaleString('en')} ms`,
+    detail: (
+      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+        <span className={cn('size-1.5 rounded-full', rating.dot)} />
+        {rating.label}
+      </span>
+    ),
+  }
 }
 
-function TabsSection({
-  title,
-  tabs,
-}: {
-  title: string
-  tabs: { label: string; content: ReactNode }[]
-}) {
-  return (
-    <Section title={title}>
-      <Tabs defaultValue={tabs[0]?.label}>
-        <TabsList>
-          {tabs.map((tab) => (
-            <TabsTrigger key={tab.label} value={tab.label} className="font-mono text-xs">
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-        <div className="grid">
-          {tabs.map((tab) => (
-            <TabsContent
-              key={tab.label}
-              value={tab.label}
-              forceMount
-              className="[grid-area:1/1] data-[state=inactive]:invisible"
-            >
-              {tab.content}
-            </TabsContent>
-          ))}
-        </div>
-      </Tabs>
-    </Section>
-  )
-}
-
-function delta(values: number[]): number | null {
-  const half = Math.floor(values.length / 2)
-  if (half === 0) return null
-  const sum = (list: number[]) => list.reduce((total, value) => total + value, 0)
-  const before = sum(values.slice(0, half))
-  const after = sum(values.slice(half))
-  if (!before) return null
-  return ((after - before) / before) * 100
+function count(value: number): string {
+  return value.toLocaleString('en')
 }

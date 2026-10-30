@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers'
 import { z } from 'zod'
 
+import { handlePattern } from '../app/auth/protocol'
 import { type Range, ranges } from '../app/stats/ranges'
 
 import {
@@ -10,7 +11,9 @@ import {
   requestDoubles,
   siteHost,
 } from './analytics.server'
+import { listPosts } from './blog.server'
 import { cached } from './cache.server'
+import { adminHandles } from './users.server'
 
 const request = columns(requestBlobs, requestDoubles)
 const engagement = columns(engagementBlobs, engagementDoubles)
@@ -27,6 +30,7 @@ const stepMs = { hour: 3_600_000, day: 86_400_000 } as const
 type Step = keyof typeof stepMs
 
 type Window = { step: Step; first: number; last: number; until: number | null; next: number }
+type Scope = { window: Window; views: string }
 
 export type AnalyticsProblem = 'unconfigured' | 'unavailable'
 export type AnalyticsResult<T> = { ok: true; value: T } | { ok: false; reason: AnalyticsProblem }
@@ -41,19 +45,26 @@ export async function loadAnalytics<T>(load: () => Promise<T>): Promise<Analytic
   }
 }
 
-export async function publicStats(range: Range, site: URL, pages: () => Promise<string[]>) {
+export async function publicStats(range: Range, site: URL) {
   const window = windowFor(range, true)
-  return cached(new URL(`/__cache/stats/${range}`, site), window.next, async () => ({
-    ...(await overview(window, site, { kind: 'public', pages: await pages() })),
-    details: null,
-  }))
+  return cached(new URL(`/__cache/stats/${range}`, site), window.next, async () => {
+    const [posts, staff] = await Promise.all([listPosts(), adminHandles()])
+    const pages = ['/', '/blog', '/stats', ...posts.map((post) => `/blog/${post.slug}`)]
+    const scope = { window, views: pageViews(window, staff) }
+    const listed = `${scope.views} AND ${request.path} IN (${sqlList(pages, pagePath)})`
+    return {
+      ...(await overview(scope, listed, (rows) => regroup(rows, browserFamily))),
+      details: null,
+    }
+  })
 }
 
 export async function fullStats(range: Range, site: URL) {
   const window = windowFor(range, false)
+  const scope = { window, views: pageViews(window, await adminHandles()) }
   const [summary, extra] = await Promise.all([
-    overview(window, site, { kind: 'full' }),
-    details(window),
+    overview(scope, scope.views, (rows) => rows.slice(0, listSize)),
+    details(scope, siteHost(site.hostname)),
   ])
   return { ...summary, details: extra }
 }
@@ -67,35 +78,12 @@ export async function recentRequests(range: Range, limit: number) {
   return requestLog(within(windowFor(range, false)), limit)
 }
 
-type Scope = { kind: 'public'; pages: readonly string[] } | { kind: 'full' }
-
-async function overview(window: Window, site: URL, scope: Scope) {
+async function overview(
+  { window, views }: Scope,
+  listed: string,
+  browsers: (rows: { name: string; count: number }[]) => { name: string; count: number }[],
+) {
   const since = within(window)
-  const own = siteHost(site.hostname)
-  const referrerKey = (referrer: string) => {
-    const from = URL.parse(referrer)
-    if (!from || siteHost(from.hostname) === own) return null
-    return scope.kind === 'public' ? from.hostname : referrer
-  }
-  const views = pageViews(since)
-  const top = (column: string, where = views) =>
-    query(
-      `SELECT ${column} AS name, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${where} AND ${column} != '' GROUP BY name ORDER BY count DESC LIMIT ${listSize}`,
-      ranked,
-    )
-  const every = (column: string, where = views) =>
-    query(
-      `SELECT ${column} AS name, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${where} AND ${column} != '' GROUP BY name`,
-      ranked,
-    )
-  const external = `${views} AND ${request.referrer} NOT LIKE '/%'`
-  const listed =
-    scope.kind === 'public'
-      ? `${views} AND ${request.path} IN (${scope.pages
-          .filter((page) => pagePath.test(page))
-          .map((page) => `'${page}'`)
-          .join(', ')})`
-      : views
   const vital = async (column: string) => {
     const [row] = await query(
       `SELECT quantileWeighted(0.75)(${column}, _sample_interval) AS p75 FROM recregt_engagement WHERE ${since} AND ${column} > 0`,
@@ -104,81 +92,88 @@ async function overview(window: Window, site: URL, scope: Scope) {
     return row?.p75 ?? null
   }
 
-  const [totals, series, pages, referrers, countries, browsers, devices, vitals] =
-    await Promise.all([
-      query(
-        `SELECT SUM(_sample_interval) AS views, COUNT(DISTINCT index1) AS visitors FROM recregt_requests WHERE ${views}`,
-        z.object({ views: count, visitors: count }),
-      ),
-      query(
-        `SELECT ${window.step === 'hour' ? 'toStartOfHour' : 'toStartOfDay'}(timestamp) AS time, SUM(_sample_interval) AS views, COUNT(DISTINCT index1) AS visitors FROM recregt_requests WHERE ${views} GROUP BY time ORDER BY time`,
-        z.object({ time: z.string(), views: count, visitors: count }),
-      ),
-      top(request.path, listed),
-      every(request.referrer, external).then((rows) => regroup(rows, referrerKey)),
-      top(request.country),
-      scope.kind === 'public'
-        ? every(request.browser).then((rows) => regroup(rows, browserFamily))
-        : top(request.browser),
-      top(request.device),
-      Promise.all([vital(engagement.ttfbMs), vital(engagement.fcpMs), vital(engagement.lcpMs)]),
-    ])
+  const [totals, series, pages, countries, browserRows, devices, vitals] = await Promise.all([
+    query(
+      `SELECT SUM(_sample_interval) AS views, COUNT(DISTINCT index1) AS visitors FROM recregt_requests WHERE ${views}`,
+      z.object({ views: count, visitors: count }),
+    ),
+    query(
+      `SELECT ${window.step === 'hour' ? 'toStartOfHour' : 'toStartOfDay'}(timestamp) AS time, SUM(_sample_interval) AS views, COUNT(DISTINCT index1) AS visitors FROM recregt_requests WHERE ${views} GROUP BY time ORDER BY time`,
+      z.object({ time: z.string(), views: count, visitors: count }),
+    ),
+    top(request.path, listed),
+    top(request.country, views),
+    every(request.browser, views),
+    top(request.device, views),
+    Promise.all([vital(engagement.ttfbMs), vital(engagement.fcpMs), vital(engagement.lcpMs)]),
+  ])
 
   return {
     totals: { views: totals[0]?.views ?? 0, visitors: totals[0]?.visitors ?? 0 },
     series: { step: window.step, points: timeline(series, window) },
     pages,
-    referrers,
     countries,
-    browsers,
+    browsers: browsers(browserRows),
     devices,
     vitals: { ttfbMs: vitals[0], fcpMs: vitals[1], lcpMs: vitals[2] },
   }
 }
 
-async function details(window: Window) {
+async function details({ window, views }: Scope, own: string) {
   const since = within(window)
-  const views = pageViews(since)
-  const top = (column: string) =>
-    query(
-      `SELECT ${column} AS name, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${views} AND ${column} != '' GROUP BY name ORDER BY count DESC LIMIT ${listSize}`,
-      ranked,
-    )
+  const referrerUrl = (referrer: string) => {
+    const from = URL.parse(referrer)
+    return from && siteHost(from.hostname) !== own ? referrer : null
+  }
 
-  const [signedIn, bots, cities, languages, systems, screens, measured, slowest, recent] =
-    await Promise.all([
-      query(
-        `SELECT SUM(_sample_interval * ${request.signedIn}) AS views FROM recregt_requests WHERE ${views}`,
-        z.object({ views: count }),
-      ),
-      query(
-        `SELECT SUM(_sample_interval) AS requests FROM recregt_requests WHERE ${since} AND ${documents} AND ${request.bot} = 1`,
-        z.object({ requests: count }),
-      ),
-      query(
-        `SELECT ${request.city} AS city, ${request.country} AS country, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${views} AND ${request.city} != '' GROUP BY city, country ORDER BY count DESC LIMIT ${listSize}`,
-        z.object({ city: z.string(), country: z.string(), count }),
-      ),
-      top(request.language),
-      top(request.os),
-      query(
-        `SELECT ${engagement.screenWidth} AS width, ${engagement.screenHeight} AS height, COUNT(DISTINCT ${engagement.pageView}) AS count FROM recregt_engagement WHERE ${since} GROUP BY width, height ORDER BY count DESC LIMIT ${listSize}`,
-        z.object({ width: count, height: count, count }),
-      ),
-      query(
-        `SELECT COUNT(DISTINCT ${engagement.pageView}) AS views FROM recregt_engagement WHERE ${since}`,
-        z.object({ views: count }),
-      ),
-      query(
-        `SELECT ${request.path} AS name, AVG(${request.durationMs}) AS ms, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${since} AND ${request.durationMs} > 0 AND ${sitePage} GROUP BY name ORDER BY ms DESC LIMIT ${listSize}`,
-        z.object({ name: z.string(), ms: count, count }),
-      ),
-      requestLog(since, listSize),
-    ])
+  const [
+    signedIn,
+    bots,
+    referrers,
+    cities,
+    languages,
+    systems,
+    screens,
+    measured,
+    slowest,
+    recent,
+  ] = await Promise.all([
+    query(
+      `SELECT SUM(_sample_interval * ${request.signedIn}) AS views FROM recregt_requests WHERE ${views}`,
+      z.object({ views: count }),
+    ),
+    query(
+      `SELECT SUM(_sample_interval) AS requests FROM recregt_requests WHERE ${since} AND ${documents} AND ${request.bot} = 1`,
+      z.object({ requests: count }),
+    ),
+    every(request.referrer, `${views} AND ${request.referrer} NOT LIKE '/%'`).then((rows) =>
+      regroup(rows, referrerUrl),
+    ),
+    query(
+      `SELECT ${request.city} AS city, ${request.country} AS country, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${views} AND ${request.city} != '' GROUP BY city, country ORDER BY count DESC LIMIT ${listSize}`,
+      z.object({ city: z.string(), country: z.string(), count }),
+    ),
+    top(request.language, views),
+    top(request.os, views),
+    query(
+      `SELECT ${engagement.screenWidth} AS width, ${engagement.screenHeight} AS height, COUNT(DISTINCT ${engagement.pageView}) AS count FROM recregt_engagement WHERE ${since} GROUP BY width, height ORDER BY count DESC LIMIT ${listSize}`,
+      z.object({ width: count, height: count, count }),
+    ),
+    query(
+      `SELECT COUNT(DISTINCT ${engagement.pageView}) AS views FROM recregt_engagement WHERE ${since}`,
+      z.object({ views: count }),
+    ),
+    query(
+      `SELECT ${request.path} AS name, AVG(${request.durationMs}) AS ms, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${since} AND ${request.durationMs} > 0 AND ${sitePage} GROUP BY name ORDER BY ms DESC LIMIT ${listSize}`,
+      z.object({ name: z.string(), ms: count, count }),
+    ),
+    requestLog(since, listSize),
+  ])
 
   return {
     signedInViews: signedIn[0]?.views ?? 0,
     botRequests: bots[0]?.requests ?? 0,
+    referrers,
     cities: cities.map(({ city, country, count }) => ({ name: `${city}, ${country}`, count })),
     languages,
     systems,
@@ -191,8 +186,31 @@ async function details(window: Window) {
   }
 }
 
-function pageViews(since: string): string {
-  return `${since} AND ${documents} AND ${request.status} = 200 AND ${request.bot} = 0 AND ${sitePage}`
+function top(column: string, where: string) {
+  return query(
+    `SELECT ${column} AS name, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${where} AND ${column} != '' GROUP BY name ORDER BY count DESC LIMIT ${listSize}`,
+    ranked,
+  )
+}
+
+function every(column: string, where: string) {
+  return query(
+    `SELECT ${column} AS name, SUM(_sample_interval) AS count FROM recregt_requests WHERE ${where} AND ${column} != '' GROUP BY name ORDER BY count DESC`,
+    ranked,
+  )
+}
+
+function pageViews(window: Window, staff: readonly string[]): string {
+  const views = `${within(window)} AND ${documents} AND ${request.status} = 200 AND ${request.bot} = 0 AND ${sitePage}`
+  const handles = sqlList(staff, handlePattern)
+  return handles ? `${views} AND ${request.handle} NOT IN (${handles})` : views
+}
+
+function sqlList(values: readonly string[], allowed: RegExp): string {
+  return values
+    .filter((value) => allowed.test(value))
+    .map((value) => `'${value}'`)
+    .join(', ')
 }
 
 function requestLog(since: string, limit: number) {

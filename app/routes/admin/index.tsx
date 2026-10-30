@@ -41,7 +41,6 @@ export default function Logs({ loaderData: { range, logs } }: Route.ComponentPro
   return (
     <>
       <PageHeader
-        eyebrow="Analytics"
         title="Logs"
         description={`The latest ${history} requests over ${rangeLabel(range)}.`}
         actions={<RangeTabs range={range} />}

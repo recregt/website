@@ -11,8 +11,11 @@ import {
 } from 'react-router'
 
 import { AccessDenied, SignInRequired } from '~/components/access-notice'
-import { PageHeader } from '~/components/page-header'
+import { Message } from '~/components/message'
+import { Page } from '~/components/page'
+import { SiteFooter } from '~/components/site-footer'
 import { SiteHeader } from '~/components/site-header'
+import { Button } from '~/components/ui/button'
 
 import type { User } from '../server/schema.server'
 import { sessionMiddleware, userContext } from '../server/session.server'
@@ -31,6 +34,9 @@ export function loader({ context }: Route.LoaderArgs) {
 export function Layout({ children }: { children: React.ReactNode }) {
   const user = useRouteLoaderData<typeof loader>('root')?.user ?? null
   const nonce = useContext(NonceContext)
+  useEffect(() => {
+    document.documentElement.dataset.hydrated = ''
+  }, [])
   return (
     <html lang="en">
       <head>
@@ -42,9 +48,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body>
+      <body className="flex min-h-dvh flex-col">
         <SiteHeader user={user} />
         {children}
+        <SiteFooter />
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -54,18 +61,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   useEngagement()
-  useEffect(() => {
-    document.documentElement.dataset.hydrated = ''
-  }, [])
   return <Outlet />
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   const user = useRouteLoaderData<typeof loader>('root')?.user ?? null
   return (
-    <main className="mx-auto max-w-md px-6 py-20">
+    <Page narrow>
       <ErrorContent error={error} user={user} />
-    </main>
+    </Page>
   )
 }
 
@@ -82,17 +86,15 @@ function ErrorContent({ error, user }: { error: unknown; user: User | null }) {
 
 function Problem({ title }: { title: string }) {
   return (
-    <>
-      <PageHeader title={title} />
-      <p className="mt-6 font-mono text-sm">
-        <Link
-          to="/"
-          viewTransition
-          className="text-ring underline decoration-ring/50 underline-offset-4 hover:decoration-ring"
-        >
-          ← Back home
-        </Link>
-      </p>
-    </>
+    <Message
+      title={title}
+      action={
+        <Button asChild variant="outline">
+          <Link to="/" viewTransition>
+            Back home
+          </Link>
+        </Button>
+      }
+    />
   )
 }

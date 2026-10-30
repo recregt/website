@@ -14,7 +14,7 @@ export function RangeTabs({ range }: { range: Range }) {
           viewTransition
           aria-current={option === range ? 'page' : undefined}
           className={cn(
-            'rounded-md px-2.5 py-1 font-mono text-xs transition-colors',
+            'rounded-md px-3 py-1 text-sm transition-colors',
             option === range
               ? 'bg-background text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
