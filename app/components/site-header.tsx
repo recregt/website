@@ -2,6 +2,7 @@ import { ChevronDown } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Form, Link, NavLink, useLocation, useNavigation } from 'react-router'
 
+import { MobileMenu } from '~/components/mobile-menu'
 import { container } from '~/components/page'
 import {
   DropdownMenu,
@@ -23,12 +24,13 @@ export function SiteHeader({ user }: { user: User | null }) {
         <Link to="/" viewTransition className="font-heading text-xl font-medium tracking-tight">
           recregt
         </Link>
-        <nav className="flex items-center gap-1 text-sm">
+        <nav aria-label="Main" className="hidden items-center gap-1 text-sm sm:flex">
           <NavItem to="/blog">Blog</NavItem>
           <NavItem to="/stats">Stats</NavItem>
           <span className="mx-2 h-4 w-px bg-border" />
           {user ? <Account user={user} /> : <SignIn />}
         </nav>
+        <MobileMenu user={user} />
       </div>
       <NavigationProgress />
     </header>
