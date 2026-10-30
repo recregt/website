@@ -15,6 +15,13 @@
       "when": 1793209433339,
       "tag": "0001_noisy_blob",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793398656498,
+      "tag": "0002_slow_earthquake",
+      "breakpoints": true
     }
   ]
 }
