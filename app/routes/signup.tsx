@@ -3,16 +3,15 @@ import { useRef, useState } from 'react'
 import { redirect, useNavigate } from 'react-router'
 
 import { Button } from '~/components/ui/button'
-import { Input } from '~/components/ui/input'
 
 import { userContext } from '../../server/session.server'
 import { turnstileSiteKey } from '../../server/turnstile.server'
+import { HandleInput } from '../auth/handle-input'
 import { authFailures, unexpectedFailure } from '../auth/messages'
 import { nextPath } from '../auth/next'
 import { login, register } from '../auth/passkeys'
-import { handleRules } from '../auth/protocol'
 import { useTurnstile } from '../auth/turnstile'
-import { AuthLink, AuthPage, Feedback, SaveRecoveryCode } from '../auth/ui'
+import { AuthLink, AuthPage, Feedback, SaveRecoveryCode, TurnstileNote } from '../auth/ui'
 import type { Route } from './+types/signup'
 
 export const meta: Route.MetaFunction = () => [{ title: 'Create an account · recregt' }]
@@ -102,21 +101,7 @@ export default function SignUp({ loaderData: { next, siteKey } }: Route.Componen
           <label htmlFor="handle" className="text-sm font-medium">
             Handle
           </label>
-          <div className="relative">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
-              @
-            </span>
-            <Input
-              id="handle"
-              name="handle"
-              required
-              autoComplete="username"
-              autoCapitalize="none"
-              spellCheck={false}
-              className="h-11 pl-7"
-            />
-          </div>
-          <p className="text-sm text-muted-foreground">{handleRules}</p>
+          <HandleInput id="handle" className="h-11" />
         </div>
         <div ref={challenge} />
         <Button type="submit" className="h-11 w-full" disabled={busy || !human.token}>
@@ -127,7 +112,7 @@ export default function SignUp({ loaderData: { next, siteKey } }: Route.Componen
               ? 'Continue with a passkey'
               : 'Checking you are human…'}
         </Button>
-        <p className="text-xs text-muted-foreground">Protected by Cloudflare Turnstile.</p>
+        <TurnstileNote />
       </form>
       <Feedback message={message} />
     </AuthPage>

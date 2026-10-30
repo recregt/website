@@ -7,11 +7,12 @@ import { Input } from '~/components/ui/input'
 
 import { userContext } from '../../server/session.server'
 import { turnstileSiteKey } from '../../server/turnstile.server'
+import { HandleInput } from '../auth/handle-input'
 import { authFailures, unexpectedFailure } from '../auth/messages'
 import { nextPath } from '../auth/next'
 import { addPasskey, recover } from '../auth/passkeys'
 import { useTurnstile } from '../auth/turnstile'
-import { AuthLink, AuthPage, Feedback, SaveRecoveryCode } from '../auth/ui'
+import { AuthLink, AuthPage, Feedback, SaveRecoveryCode, TurnstileNote } from '../auth/ui'
 import type { Route } from './+types/recover'
 
 type Stage =
@@ -133,20 +134,7 @@ function CodeStep({
           <label htmlFor="handle" className="text-sm font-medium">
             Handle
           </label>
-          <div className="relative">
-            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
-              @
-            </span>
-            <Input
-              id="handle"
-              name="handle"
-              required
-              autoComplete="username"
-              autoCapitalize="none"
-              spellCheck={false}
-              className="h-11 pl-7"
-            />
-          </div>
+          <HandleInput id="handle" className="h-11" />
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="code" className="text-sm font-medium">
@@ -170,7 +158,7 @@ function CodeStep({
         <Button type="submit" className="h-11 w-full" disabled={busy || !human.token}>
           {busy ? 'Checking…' : human.token ? 'Recover my account' : 'Checking you are human…'}
         </Button>
-        <p className="text-xs text-muted-foreground">Protected by Cloudflare Turnstile.</p>
+        <TurnstileNote />
       </form>
       <Feedback message={message} />
     </AuthPage>
