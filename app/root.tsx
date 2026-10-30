@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { useContext, useEffect } from 'react'
 import {
   isRouteErrorResponse,
   Link,
@@ -54,6 +54,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   useEngagement()
+  useEffect(() => {
+    document.documentElement.dataset.hydrated = ''
+  }, [])
   return <Outlet />
 }
 

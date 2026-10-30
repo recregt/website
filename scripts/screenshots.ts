@@ -29,8 +29,12 @@ for (const [device, viewport] of Object.entries(viewports)) {
   for (const colorScheme of schemes) {
     const page = await browser.newPage({ viewport, colorScheme, reducedMotion: 'reduce' })
     for (const path of paths) {
-      await page.goto(new URL(path, values.base).href, { waitUntil: 'networkidle' })
-      await page.evaluate(() => document.fonts.ready)
+      await page.goto(new URL(path, values.base).href, { waitUntil: 'load' })
+      await page.waitForSelector('html[data-hydrated]', { state: 'attached' })
+      await page.evaluate(async () => {
+        await document.fonts.ready
+        await new Promise((done) => requestAnimationFrame(done))
+      })
       const file = join(values.out, `${slug(path)}.${device}.${colorScheme}.png`)
       await page.screenshot({ path: file, fullPage: true })
       console.log(file)
