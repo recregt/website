@@ -1,3 +1,4 @@
+import { SiteHero } from '~/components/cover-hero'
 import { Notice } from '~/components/notice'
 import { Page } from '~/components/page'
 import { PageHeader } from '~/components/page-header'
@@ -14,8 +15,14 @@ export async function loader() {
 
 export default function Blog({ loaderData: { posts } }: Route.ComponentProps) {
   return (
-    <Page narrow>
-      <PageHeader title="Blog" description="Notes and experiments on the modern web." />
+    <Page
+      narrow
+      hero={
+        <SiteHero>
+          <PageHeader title="Blog" />
+        </SiteHero>
+      }
+    >
       {posts.length > 0 ? (
         <div className="-mt-6">
           <PostList posts={posts} />

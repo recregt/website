@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 
+import { SiteHero } from '~/components/cover-hero'
 import { Notice } from '~/components/notice'
 import { Page } from '~/components/page'
 import { Section } from '~/components/section'
@@ -18,13 +19,14 @@ export async function loader() {
 
 export default function Home({ loaderData: { posts, featured } }: Route.ComponentProps) {
   return (
-    <Page narrow>
-      <div className="pt-6">
-        <h1 className="font-heading text-5xl font-medium tracking-tight sm:text-6xl">recregt</h1>
-        <p className="mt-5 text-xl text-muted-foreground">
-          Notes and experiments on the modern web.
-        </p>
-      </div>
+    <Page
+      narrow
+      hero={
+        <SiteHero>
+          <h1 className="font-heading text-5xl font-medium tracking-tight sm:text-6xl">recregt</h1>
+        </SiteHero>
+      }
+    >
       {featured.length > 0 && (
         <Section title="Selected projects" action={<More to="/projects">All projects</More>}>
           <ProjectList projects={featured} />
