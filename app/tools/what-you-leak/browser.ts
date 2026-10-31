@@ -17,7 +17,6 @@ type ExtendedNavigator = Navigator & {
   userAgentData?: UserAgentData
   keyboard?: { getLayoutMap(): Promise<Map<string, string>> }
   getBattery?: () => Promise<Battery>
-  connection?: { effectiveType?: string; downlink?: number }
   deviceMemory?: number
   brave?: { isBrave(): Promise<boolean> }
 }
@@ -74,8 +73,6 @@ export type BrowserSignals = {
   architecture: string | null
   browser: string | null
   brave: boolean
-  connection: { type: string; downlinkMbps: number | null } | null
-  diskGb: number | null
   voices: { count: number; languages: number } | null
   fonts: { name: string; hint: FontHint }[]
   extensions: { name: string; kind: ExtensionKind }[]
@@ -92,14 +89,14 @@ export type BrowserSignals = {
 const fontCandidates: { name: string; hint: FontHint }[] = [
   { name: 'JetBrains Mono', hint: 'developer' },
   { name: 'Fira Code', hint: 'developer' },
-  { name: 'Cascadia Code', hint: 'developer' },
-  { name: 'Source Code Pro', hint: 'developer' },
   { name: 'Iosevka', hint: 'developer' },
   { name: 'Hack', hint: 'developer' },
-  { name: 'Calibri', hint: 'office' },
-  { name: 'Cambria', hint: 'office' },
-  { name: 'Aptos', hint: 'office' },
-  { name: 'Candara', hint: 'office' },
+  { name: 'Victor Mono', hint: 'developer' },
+  { name: 'Century Gothic', hint: 'office' },
+  { name: 'Gill Sans MT', hint: 'office' },
+  { name: 'Tw Cen MT', hint: 'office' },
+  { name: 'Rockwell', hint: 'office' },
+  { name: 'Bookman Old Style', hint: 'office' },
   { name: 'Myriad Pro', hint: 'adobe' },
   { name: 'Minion Pro', hint: 'adobe' },
   { name: 'Adobe Garamond Pro', hint: 'adobe' },
@@ -118,7 +115,6 @@ const sampleVideo = { width: 1920, height: 1080, bitrate: 8_000_000, framerate: 
 const commonRefreshRates = [30, 48, 50, 60, 75, 90, 100, 120, 144, 165, 180, 240, 360]
 const refreshSamples = 30
 const wheelSamples = 3
-const chromiumQuotaShareOfDisk = 0.6
 
 export async function readBrowser(): Promise<BrowserSignals> {
   const nav = navigator as ExtendedNavigator
@@ -126,7 +122,7 @@ export async function readBrowser(): Promise<BrowserSignals> {
   const format = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
   const fine = matchMedia('(any-pointer: fine)').matches
   const coarse = matchMedia('(any-pointer: coarse)').matches
-  const [highEntropy, battery, keyboard, diskGb, adBlocker, refreshHz, brave, videoDecoding] =
+  const [highEntropy, battery, keyboard, adBlocker, refreshHz, brave, videoDecoding] =
     await Promise.all([
       nav.userAgentData
         ?.getHighEntropyValues([
@@ -139,7 +135,6 @@ export async function readBrowser(): Promise<BrowserSignals> {
         .catch(() => null) ?? null,
       nav.getBattery?.().catch(() => null) ?? null,
       readKeyboard(nav),
-      readDisk(nav),
       detectAdBlocker(),
       measureRefreshRate(),
       nav.brave?.isBrave().catch(() => false) ?? false,
@@ -193,10 +188,6 @@ export async function readBrowser(): Promise<BrowserSignals> {
       : null,
     browser: describeBrowser(highEntropy?.fullVersionList ?? nav.userAgentData?.brands ?? null),
     brave,
-    connection: nav.connection?.effectiveType
-      ? { type: nav.connection.effectiveType, downlinkMbps: nav.connection.downlink ?? null }
-      : null,
-    diskGb,
     voices: readVoices(),
     fonts: fontCandidates.filter((font) => fontInstalled(font.name)),
     extensions: detectExtensions(),
@@ -316,7 +307,8 @@ function readTaskbar(os: string): BrowserSignals['taskbar'] {
 function detectExtensions(): BrowserSignals['extensions'] {
   const page = window as unknown as Record<string, unknown>
   const found: BrowserSignals['extensions'] = []
-  if (page.__REACT_DEVTOOLS_GLOBAL_HOOK__)
+  const reactHook = page.__REACT_DEVTOOLS_GLOBAL_HOOK__ as { checkDCE?: unknown } | undefined
+  if (typeof reactHook?.checkDCE === 'function')
     found.push({ name: 'React Developer Tools', kind: 'developer' })
   if (page.__VUE_DEVTOOLS_GLOBAL_HOOK__) found.push({ name: 'Vue.js devtools', kind: 'developer' })
   if (page.__REDUX_DEVTOOLS_EXTENSION__) found.push({ name: 'Redux DevTools', kind: 'developer' })
@@ -387,12 +379,6 @@ async function readKeyboard(nav: ExtendedNavigator): Promise<string | null> {
     .map((code) => key(code) ?? '')
     .join('')
   return row === 'qwerty' ? 'QWERTY' : row.toUpperCase()
-}
-
-async function readDisk(nav: ExtendedNavigator): Promise<number | null> {
-  if (!nav.userAgentData || !navigator.storage?.estimate) return null
-  const { quota } = await navigator.storage.estimate().catch(() => ({ quota: undefined }))
-  return quota ? quota / chromiumQuotaShareOfDisk / 1e9 : null
 }
 
 async function detectAdBlocker(): Promise<boolean> {

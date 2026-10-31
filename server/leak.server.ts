@@ -81,7 +81,7 @@ export function connectionSignals(request: Request): ConnectionSignals {
     httpProtocol: text(cf?.httpProtocol),
     tlsVersion: text(cf?.tlsVersion),
     tlsCipher: text(cf?.tlsCipher),
-    rttMs: typeof cf?.clientTcpRtt === 'number' ? cf.clientTcpRtt : null,
+    rttMs: typeof cf?.clientTcpRtt === 'number' && cf.clientTcpRtt > 0 ? cf.clientTcpRtt : null,
     inEu: cf?.isEUCountry === '1',
     ipVersion: ip ? (ip.includes(':') ? 6 : 4) : null,
     priority: text(cf?.requestPriority),
