@@ -7,7 +7,7 @@ import { Section } from '~/components/section'
 import { findProject } from '../../../server/content.server'
 import { PostList } from '../../blog/list'
 import { Body } from '../../content/body'
-import { imageUrl } from '../../content/sanity'
+import { coverWidth, imageUrl } from '../../content/sanity'
 import { statusLabel } from '../../projects/list'
 import type { Route } from './+types/project'
 
@@ -63,7 +63,7 @@ export default function Project({ loaderData: { project } }: Route.ComponentProp
         {project.coverImage && (
           <img
             className="mt-10 rounded-lg border border-border"
-            src={imageUrl(project.coverImage, 1600)}
+            src={imageUrl(project.coverImage, coverWidth)}
             alt={project.coverImage.alt ?? ''}
           />
         )}
