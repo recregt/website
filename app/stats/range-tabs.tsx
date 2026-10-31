@@ -11,7 +11,7 @@ export function RangeTabs({ range }: { range: Range }) {
         <Link
           key={option}
           to={`?range=${option}`}
-          viewTransition
+          preventScrollReset
           aria-current={option === range ? 'page' : undefined}
           className={segmentItem(option === range)}
         >
