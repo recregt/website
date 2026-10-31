@@ -8,6 +8,7 @@ import { Section } from '~/components/section'
 import { connectionSignals } from '../../../server/leak.server'
 import {
   type BrowserSignals,
+  discoverAddresses,
   listenForScrolling,
   listenForVoices,
   readBrowser,
@@ -19,6 +20,7 @@ import {
   buildStory,
   connectionGroup,
   type Group,
+  type Live,
 } from '../../tools/what-you-leak/report'
 import type { Route } from './+types/what-you-leak'
 
@@ -33,13 +35,15 @@ export const meta: Route.MetaFunction = () => [
 
 export const headers: Route.HeadersFunction = () => ({ 'Cache-Control': 'private, no-store' })
 
-export function loader({ request }: Route.LoaderArgs) {
-  return { connection: connectionSignals(request) }
+export async function loader({ request }: Route.LoaderArgs) {
+  return { connection: await connectionSignals(request) }
 }
 
 export default function WhatYouLeak({ loaderData: { connection } }: Route.ComponentProps) {
   const [browser, setBrowser] = useState<BrowserSignals | null>(null)
   const [scrolling, setScrolling] = useState<ScrollDevice | null>(null)
+  const [addresses, setAddresses] = useState<Live['addresses']>('pending')
+  const live: Live = { scrolling, addresses }
 
   useEffect(() => {
     let active = true
@@ -50,10 +54,12 @@ export default function WhatYouLeak({ loaderData: { connection } }: Route.Compon
       setBrowser((current) => (current ? { ...current, voices } : current)),
     )
     const stopScrolling = listenForScrolling(setScrolling)
+    const stopAddresses = discoverAddresses(setAddresses)
     return () => {
       active = false
       stopVoices()
       stopScrolling()
+      stopAddresses()
     }
   }, [])
 
@@ -68,7 +74,7 @@ export default function WhatYouLeak({ loaderData: { connection } }: Route.Compon
     >
       <section className="flex flex-col gap-4">
         {browser ? (
-          buildStory(connection, browser, scrolling).map((paragraph) => (
+          buildStory(connection, browser, live).map((paragraph) => (
             <p key={paragraph} className="font-heading text-2xl leading-snug sm:text-3xl">
               {paragraph}
             </p>
@@ -86,7 +92,7 @@ export default function WhatYouLeak({ loaderData: { connection } }: Route.Compon
       <Experiment />
       <Findings group={connectionGroup(connection)} />
       {browser ? (
-        <Findings group={browserGroup(connection, browser, scrolling)} />
+        <Findings group={browserGroup(connection, browser, live)} />
       ) : (
         <Section title="What your browser reveals">
           <p className="text-sm text-muted-foreground">Reading…</p>

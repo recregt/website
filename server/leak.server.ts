@@ -32,6 +32,9 @@ const mobileNetworks = ['mobile', 'wireless', 'cellular', 'lte', 't-mobile', 'vo
 
 export type NetworkKind = 'hosting' | 'mobile' | 'home'
 
+const dnsOverHttps = 'https://cloudflare-dns.com/dns-query'
+const ptrRecord = 12
+
 export type ConnectionSignals = {
   ip: string | null
   city: string | null
@@ -53,6 +56,8 @@ export type ConnectionSignals = {
   ipVersion: 4 | 6 | null
   priority: string | null
   saveData: boolean
+  hostname: string | null
+  compression: string[]
   languages: string[]
   userAgent: string | null
   globalPrivacyControl: boolean
@@ -60,12 +65,14 @@ export type ConnectionSignals = {
   referrer: string | null
 }
 
-export function connectionSignals(request: Request): ConnectionSignals {
+export async function connectionSignals(request: Request): Promise<ConnectionSignals> {
   const cf = request.cf
   const headers = request.headers
   const isp = text(cf?.asOrganization)
   const ip = headers.get('cf-connecting-ip')
   return {
+    hostname: ip ? await reverseDns(ip) : null,
+    compression: list(headers.get('accept-encoding')),
     ip,
     city: text(cf?.city),
     region: text(cf?.region),
@@ -94,6 +101,45 @@ export function connectionSignals(request: Request): ConnectionSignals {
   }
 }
 
+async function reverseDns(ip: string): Promise<string | null> {
+  const name = reverseName(ip)
+  if (!name) return null
+  const url = new URL(dnsOverHttps)
+  url.searchParams.set('name', name)
+  url.searchParams.set('type', 'PTR')
+  try {
+    const response = await fetch(url, { headers: { accept: 'application/dns-json' } })
+    if (!response.ok) return null
+    const body = (await response.json()) as { Answer?: { type: number; data: string }[] }
+    const host = body.Answer?.find((answer) => answer.type === ptrRecord)?.data
+    return host ? host.replace(/\.$/, '') : null
+  } catch {
+    return null
+  }
+}
+
+function reverseName(ip: string): string | null {
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return `${ip.split('.').reverse().join('.')}.in-addr.arpa`
+  if (!ip.includes(':')) return null
+  const [head = '', tail = ''] = ip.split('::')
+  const left = head ? head.split(':') : []
+  const right = tail ? tail.split(':') : []
+  const groups = ip.includes('::')
+    ? [...left, ...Array(8 - left.length - right.length).fill('0'), ...right]
+    : left
+  if (groups.length !== 8) return null
+  const nibbles = groups.map((group) => group.padStart(4, '0')).join('')
+  return `${[...nibbles].reverse().join('.')}.ip6.arpa`
+}
+
+function list(header: string | null): string[] {
+  if (!header) return []
+  return header
+    .split(',')
+    .map((part) => part.split(';')[0]?.trim() ?? '')
+    .filter((part) => part.length > 0)
+}
+
 function networkKind(isp: string): NetworkKind {
   const name = isp.toLowerCase()
   if (hostingNetworks.some((word) => name.includes(word))) return 'hosting'
@@ -102,11 +148,7 @@ function networkKind(isp: string): NetworkKind {
 }
 
 function acceptedLanguages(header: string | null): string[] {
-  if (!header) return []
-  return header
-    .split(',')
-    .map((part) => part.split(';')[0]?.trim() ?? '')
-    .filter((tag) => tag.length > 0 && tag !== '*')
+  return list(header).filter((tag) => tag !== '*')
 }
 
 function text(value: unknown): string | null {
