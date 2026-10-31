@@ -27,6 +27,12 @@ import './app.css'
 
 export const middleware: Route.MiddlewareFunction[] = [sessionMiddleware]
 
+export const links: Route.LinksFunction = () => [
+  { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
+  { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+  { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+]
+
 export function loader({ context }: Route.LoaderArgs) {
   return { user: context.get(userContext) }
 }
