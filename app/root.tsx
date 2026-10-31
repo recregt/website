@@ -1,3 +1,5 @@
+import geist from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url'
+import newsreader from '@fontsource-variable/newsreader/files/newsreader-latin-opsz-normal.woff2?url'
 import { useContext, useEffect } from 'react'
 import {
   isRouteErrorResponse,
@@ -28,6 +30,13 @@ import './app.css'
 export const middleware: Route.MiddlewareFunction[] = [sessionMiddleware]
 
 export const links: Route.LinksFunction = () => [
+  ...[geist, newsreader].map((href) => ({
+    rel: 'preload',
+    href,
+    as: 'font',
+    type: 'font/woff2',
+    crossOrigin: 'anonymous' as const,
+  })),
   { rel: 'icon', href: '/favicon.ico', sizes: '32x32' },
   { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
   { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
