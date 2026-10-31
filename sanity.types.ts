@@ -22,6 +22,22 @@ export type SanityImageAssetReference = {
   [internalGroqTypeReferenceTo]?: "sanity.imageAsset";
 };
 
+export type CoverImage = {
+  asset?: SanityImageAssetReference;
+  media?: unknown; // Unable to locate the referenced type "media" in schema
+  hotspot?: SanityImageHotspot;
+  crop?: SanityImageCrop;
+  alt?: string;
+  _type: "image";
+};
+
+export type ProjectReference = {
+  _ref: string;
+  _type: "reference";
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: "project";
+};
+
 export type Post = {
   _id: string;
   _type: "post";
@@ -32,14 +48,60 @@ export type Post = {
   slug?: Slug;
   publishedAt?: string;
   summary?: string;
-  coverImage?: {
-    asset?: SanityImageAssetReference;
-    media?: unknown;
-    hotspot?: SanityImageHotspot;
-    crop?: SanityImageCrop;
-    alt?: string;
-    _type: "image";
-  };
+  projects?: Array<
+    {
+      _key: string;
+    } & ProjectReference
+  >;
+  coverImage?: CoverImage;
+  body?: Array<
+    | {
+        children?: Array<{
+          marks?: Array<string>;
+          text?: string;
+          _type: "span";
+          _key: string;
+        }>;
+        style?:
+          "normal" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "blockquote";
+        listItem?: "bullet" | "number";
+        markDefs?: Array<{
+          href?: string;
+          _type: "link";
+          _key: string;
+        }>;
+        level?: number;
+        _type: "block";
+        _key: string;
+      }
+    | {
+        asset?: SanityImageAssetReference;
+        media?: unknown;
+        hotspot?: SanityImageHotspot;
+        crop?: SanityImageCrop;
+        alt?: string;
+        _type: "image";
+        _key: string;
+      }
+  >;
+};
+
+export type Project = {
+  _id: string;
+  _type: "project";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  title?: string;
+  slug?: Slug;
+  summary?: string;
+  year?: number;
+  status?: "active" | "archived";
+  featured?: boolean;
+  stack?: Array<string>;
+  repository?: string;
+  website?: string;
+  coverImage?: CoverImage;
   body?: Array<
     | {
         children?: Array<{
@@ -193,7 +255,10 @@ export type Geopoint = {
 
 export type AllSanitySchemaTypes =
   | SanityImageAssetReference
+  | CoverImage
+  | ProjectReference
   | Post
+  | Project
   | SanityImageCrop
   | SanityImageHotspot
   | Slug
@@ -206,31 +271,28 @@ export type AllSanitySchemaTypes =
   | SanityImageAsset
   | Geopoint;
 
-// Source: ../server/blog.server.ts
+// Source: ../server/content.server.ts
 // Variable: postsQuery
-// Query: *[_type == "post" && defined(slug.current) && publishedAt <= now()] | order(publishedAt desc) {    "slug": slug.current, title, summary, publishedAt  }
+// Query: *[_type == "post" && defined(slug.current) && publishedAt <= now()] | order(publishedAt desc) {    "slug": slug.current, title, summary, publishedAt,    "projects": projects[]->{ "slug": slug.current, title }  }
 export type PostsQueryResult = Array<{
   slug: string | null;
   title: string | null;
   summary: string | null;
   publishedAt: string | null;
+  projects: Array<{
+    slug: string | null;
+    title: string | null;
+  }> | null;
 }>;
 
-// Source: ../server/blog.server.ts
+// Source: ../server/content.server.ts
 // Variable: postQuery
-// Query: *[_type == "post" && slug.current == $slug && publishedAt <= now()][0] {    title, summary, publishedAt, coverImage, body  }
+// Query: *[_type == "post" && slug.current == $slug && publishedAt <= now()][0] {    title, summary, publishedAt, coverImage, body,    "projects": projects[]->{      "slug": slug.current, title,      "posts": *[        _type == "post" && references(^._id) && _id != ^.^._id        && defined(slug.current) && publishedAt <= now()      ] | order(publishedAt desc) {        "slug": slug.current, title, summary, publishedAt,        "projects": projects[]->{ "slug": slug.current, title }      }    }  }
 export type PostQueryResult = {
   title: string | null;
   summary: string | null;
   publishedAt: string | null;
-  coverImage: {
-    asset?: SanityImageAssetReference;
-    media?: unknown;
-    hotspot?: SanityImageHotspot;
-    crop?: SanityImageCrop;
-    alt?: string;
-    _type: "image";
-  } | null;
+  coverImage: CoverImage | null;
   body: Array<
     | {
         children?: Array<{
@@ -261,13 +323,97 @@ export type PostQueryResult = {
         _key: string;
       }
   > | null;
+  projects: Array<{
+    slug: string | null;
+    title: string | null;
+    posts: Array<{
+      slug: string | null;
+      title: string | null;
+      summary: string | null;
+      publishedAt: string | null;
+      projects: Array<{
+        slug: string | null;
+        title: string | null;
+      }> | null;
+    }>;
+  }> | null;
+} | null;
+
+// Source: ../server/content.server.ts
+// Variable: projectsQuery
+// Query: *[_type == "project" && defined(slug.current)] {    "slug": slug.current, title, summary, year, status, featured,    "posts": count(*[_type == "post" && references(^._id) && defined(slug.current) && publishedAt <= now()]),    "lastPostAt": *[      _type == "post" && references(^._id) && defined(slug.current) && publishedAt <= now()    ] | order(publishedAt desc)[0].publishedAt  }
+export type ProjectsQueryResult = Array<{
+  slug: string | null;
+  title: string | null;
+  summary: string | null;
+  year: number | null;
+  status: "active" | "archived" | null;
+  featured: boolean | null;
+  posts: number;
+  lastPostAt: string | null;
+}>;
+
+// Source: ../server/content.server.ts
+// Variable: projectQuery
+// Query: *[_type == "project" && slug.current == $slug][0] {    title, summary, year, status, stack, repository, website, coverImage, body,    "posts": *[      _type == "post" && references(^._id) && defined(slug.current) && publishedAt <= now()    ] | order(publishedAt desc) {      "slug": slug.current, title, summary, publishedAt,      "projects": projects[]->{ "slug": slug.current, title }    }  }
+export type ProjectQueryResult = {
+  title: string | null;
+  summary: string | null;
+  year: number | null;
+  status: "active" | "archived" | null;
+  stack: Array<string> | null;
+  repository: string | null;
+  website: string | null;
+  coverImage: CoverImage | null;
+  body: Array<
+    | {
+        children?: Array<{
+          marks?: Array<string>;
+          text?: string;
+          _type: "span";
+          _key: string;
+        }>;
+        style?:
+          "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "normal";
+        listItem?: "bullet" | "number";
+        markDefs?: Array<{
+          href?: string;
+          _type: "link";
+          _key: string;
+        }>;
+        level?: number;
+        _type: "block";
+        _key: string;
+      }
+    | {
+        asset?: SanityImageAssetReference;
+        media?: unknown;
+        hotspot?: SanityImageHotspot;
+        crop?: SanityImageCrop;
+        alt?: string;
+        _type: "image";
+        _key: string;
+      }
+  > | null;
+  posts: Array<{
+    slug: string | null;
+    title: string | null;
+    summary: string | null;
+    publishedAt: string | null;
+    projects: Array<{
+      slug: string | null;
+      title: string | null;
+    }> | null;
+  }>;
 } | null;
 
 // Query TypeMap
 declare global {
   interface SanityQueries {
-    '\n  *[_type == "post" && defined(slug.current) && publishedAt <= now()] | order(publishedAt desc) {\n    "slug": slug.current, title, summary, publishedAt\n  }\n': PostsQueryResult;
-    '\n  *[_type == "post" && slug.current == $slug && publishedAt <= now()][0] {\n    title, summary, publishedAt, coverImage, body\n  }\n': PostQueryResult;
+    '\n  *[_type == "post" && defined(slug.current) && publishedAt <= now()] | order(publishedAt desc) {\n    "slug": slug.current, title, summary, publishedAt,\n    "projects": projects[]->{ "slug": slug.current, title }\n  }\n': PostsQueryResult;
+    '\n  *[_type == "post" && slug.current == $slug && publishedAt <= now()][0] {\n    title, summary, publishedAt, coverImage, body,\n    "projects": projects[]->{\n      "slug": slug.current, title,\n      "posts": *[\n        _type == "post" && references(^._id) && _id != ^.^._id\n        && defined(slug.current) && publishedAt <= now()\n      ] | order(publishedAt desc) {\n        "slug": slug.current, title, summary, publishedAt,\n        "projects": projects[]->{ "slug": slug.current, title }\n      }\n    }\n  }\n': PostQueryResult;
+    '\n  *[_type == "project" && defined(slug.current)] {\n    "slug": slug.current, title, summary, year, status, featured,\n    "posts": count(*[_type == "post" && references(^._id) && defined(slug.current) && publishedAt <= now()]),\n    "lastPostAt": *[\n      _type == "post" && references(^._id) && defined(slug.current) && publishedAt <= now()\n    ] | order(publishedAt desc)[0].publishedAt\n  }\n': ProjectsQueryResult;
+    '\n  *[_type == "project" && slug.current == $slug][0] {\n    title, summary, year, status, stack, repository, website, coverImage, body,\n    "posts": *[\n      _type == "post" && references(^._id) && defined(slug.current) && publishedAt <= now()\n    ] | order(publishedAt desc) {\n      "slug": slug.current, title, summary, publishedAt,\n      "projects": projects[]->{ "slug": slug.current, title }\n    }\n  }\n': ProjectQueryResult;
   }
 }
 // Lets @sanity/client releases that predate the global registry read it too

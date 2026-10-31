@@ -1,6 +1,6 @@
 import { PortableText, type PortableTextTypeComponentProps } from '@portabletext/react'
 
-import type { Post } from '../../server/blog.server'
+import type { Post } from '../../server/content.server'
 import { imageUrl } from './sanity'
 
 type BodyImage = Extract<Post['body'][number], { _type: 'image' }>

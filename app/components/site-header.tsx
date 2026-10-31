@@ -24,7 +24,8 @@ export function SiteHeader({ user }: { user: User | null }) {
         <Link to="/" viewTransition className="font-heading text-xl font-medium tracking-tight">
           recregt
         </Link>
-        <nav aria-label="Main" className="hidden items-center gap-1 text-sm sm:flex">
+        <nav aria-label="Main" className="-mr-2.5 hidden items-center gap-1 text-sm sm:flex">
+          <NavItem to="/projects">Projects</NavItem>
           <NavItem to="/blog">Blog</NavItem>
           <NavItem to="/stats">Stats</NavItem>
           <span className="mx-2 h-4 w-px bg-border" />

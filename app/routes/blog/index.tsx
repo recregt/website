@@ -2,7 +2,7 @@ import { Notice } from '~/components/notice'
 import { Page } from '~/components/page'
 import { PageHeader } from '~/components/page-header'
 
-import { listPosts } from '../../../server/blog.server'
+import { listPosts } from '../../../server/content.server'
 import { PostList } from '../../blog/list'
 import type { Route } from './+types/index'
 

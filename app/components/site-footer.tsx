@@ -14,6 +14,9 @@ export function SiteFooter() {
       >
         <span className="font-heading text-base text-foreground">recregt</span>
         <nav className="flex gap-4">
+          <Link to="/projects" viewTransition className="hover:text-foreground">
+            Projects
+          </Link>
           <Link to="/blog" viewTransition className="hover:text-foreground">
             Blog
           </Link>

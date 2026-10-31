@@ -8,6 +8,11 @@
     "typegen": "sanity schemas extract --force && sanity typegen generate"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
+    "@sanity/icons": "^5.2.3",
+    "@sanity/ui": "^4.4.10",
     "@sanity/vision": "^6.20.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
