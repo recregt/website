@@ -18,7 +18,7 @@ export default function Projects({ loaderData: { projects } }: Route.ComponentPr
     <Page
       narrow
       hero={
-        <SiteHero>
+        <SiteHero page="projects">
           <PageHeader
             title="Projects"
             description="What I build, and the posts written about each."

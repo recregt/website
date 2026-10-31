@@ -22,7 +22,7 @@ export default function Home({ loaderData: { posts, featured } }: Route.Componen
     <Page
       narrow
       hero={
-        <SiteHero>
+        <SiteHero page="home">
           <h1 className="font-heading text-5xl font-medium tracking-tight sm:text-6xl">recregt</h1>
         </SiteHero>
       }

@@ -14,7 +14,7 @@ const views = [
 
 export function StatsHero({ range, description }: { range: Range; description: string }) {
   return (
-    <SiteHero narrow={false}>
+    <SiteHero page="stats" narrow={false}>
       <PageHeader title="Stats" description={description} actions={<RangeTabs range={range} />} />
     </SiteHero>
   )
