@@ -57,7 +57,6 @@ export type ConnectionSignals = {
   priority: string | null
   saveData: boolean
   hostname: string | null
-  compression: string[]
   languages: string[]
   userAgent: string | null
   globalPrivacyControl: boolean
@@ -72,7 +71,6 @@ export async function connectionSignals(request: Request): Promise<ConnectionSig
   const ip = headers.get('cf-connecting-ip')
   return {
     hostname: ip ? await reverseDns(ip) : null,
-    compression: list(headers.get('accept-encoding')),
     ip,
     city: text(cf?.city),
     region: text(cf?.region),

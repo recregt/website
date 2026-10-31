@@ -265,18 +265,14 @@ export function connectionGroup(server: ConnectionSignals): Group {
       },
       {
         label: 'Request priority',
-        value: server.priority,
+        value:
+          server.priority ?? (server.httpProtocol === 'HTTP/3' ? 'Not reported over HTTP/3' : null),
         hide: 'Each browser engine prioritizes requests its own way, which can expose the real browser behind a faked user agent.',
       },
       {
         label: 'Data saver',
         value: server.saveData ? 'On' : 'Off',
         hide: 'Sent as a header when you turn on data saving.',
-      },
-      {
-        label: 'Compression your browser accepts',
-        value: server.compression.length > 0 ? server.compression.join(', ') : null,
-        hide: 'Newer browsers add zstd, which narrows down your browser version.',
       },
       {
         label: 'Languages you accept',
@@ -357,7 +353,9 @@ export function browserGroup(
       {
         label: 'Graphics adapters',
         value: adapterList(browser.adapters),
-        guess: Boolean(browser.adapters.performance),
+        guess: [browser.adapters.integrated, browser.adapters.performance].some(
+          (adapter) => adapter !== null && seriesOf(adapter) !== undefined,
+        ),
         hide: 'WebGPU reports the vendor and architecture of each graphics chip, including one this page does not use. Firefox and Safari report less.',
       },
       {
