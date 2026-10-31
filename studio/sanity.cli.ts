@@ -11,5 +11,5 @@ export default defineCliConfig({
     generates: '../sanity.types.ts',
     overloadClientMethods: true,
   },
-  deployment: { autoUpdates: true },
+  deployment: { autoUpdates: false },
 })
