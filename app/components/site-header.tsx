@@ -19,7 +19,7 @@ import { signInHref } from '../auth/next'
 
 export function SiteHeader({ user }: { user: User | null }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md [view-transition-name:site-header]">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 [view-transition-name:site-header]">
       <div className={cn(container, 'flex h-14 items-center justify-between')}>
         <Link to="/" viewTransition className="font-heading text-xl font-medium tracking-tight">
           recregt
