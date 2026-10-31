@@ -52,15 +52,22 @@ export function buildStory(
 
 function where(server: ConnectionSignals, browser: BrowserSignals): string[] {
   const place = placeName(server)
-  const vpn = usesVpn(server, browser)
+  const mismatch = clockMismatch(server, browser)
+  const hosting = server.network === 'hosting'
+  const zone = readableZone(browser.timezone)
+  if (mismatch && place && server.timezone) {
+    return [
+      hosting && server.isp
+        ? `You're connecting through ${server.isp}, a hosting network, from ${place}, but your clock is set to ${zone}. That combination usually means a VPN or proxy.`
+        : `Your clock says ${browser.time}, but you're in or near ${place}, where it's ${timeIn(server.timezone)}. Your computer is set to the ${zone} time zone.`,
+      ...(!hosting && server.isp ? [`Your internet comes from ${server.isp}.`] : []),
+      ...(server.inEu ? ["You're in the EU, so GDPR limits what sites may do with this."] : []),
+    ]
+  }
   const sentences = [
-    `It's ${browser.time}${twentyFourHour(browser) ? ` ${partOfDay(browser.hour)}` : ''} for you${place && !vpn ? `, and you're in or near ${place}` : ''}.`,
+    `It's ${browser.time}${twentyFourHour(browser) ? ` ${partOfDay(browser.hour)}` : ''} for you${place ? `, and you're in or near ${place}` : ''}.`,
   ]
-  if (vpn && place) {
-    sentences.push(
-      `Your connection appears to come from ${place}, but your clock is set to ${readableZone(browser.timezone)}, a different time zone, which usually means a VPN or proxy.`,
-    )
-  } else if (server.network === 'hosting' && server.isp) {
+  if (hosting && server.isp) {
     sentences.push(
       `You're connecting through ${server.isp}, a hosting network, which usually means a VPN or proxy.`,
     )
@@ -81,6 +88,9 @@ function machine(server: ConnectionSignals, browser: BrowserSignals): string[] {
     sentences.push(
       `You're on ${os}${device ? `, likely a ${device}` : ''}${graphicsPhrase(browser.gpu)}.`,
     )
+  }
+  if (browser.screen.pixelRatio !== 1) {
+    sentences.push(`Your display is ${display(browser).replace('×', ' by ')}.`)
   }
   if (browser.refreshHz && browser.refreshHz > standardRefreshHz) {
     sentences.push(`Your screen refreshes ${browser.refreshHz} times a second, faster than most.`)
@@ -178,11 +188,10 @@ export function connectionGroup(server: ConnectionSignals): Group {
       },
       {
         label: 'Distance to our server',
-        value:
-          server.rttMs !== null
-            ? `${server.rttMs} ms round trip${server.colo ? ` to Cloudflare's ${server.colo} data center` : ''}`
-            : null,
-        hide: 'Grows with distance. A VPN adds its own delay.',
+        value: server.colo
+          ? `${server.rttMs !== null ? `${server.rttMs} ms round trip to ` : 'Served by '}Cloudflare's ${server.colo} data center`
+          : null,
+        hide: 'Round trip time grows with distance, and a VPN adds its own delay. It is not measured over HTTP/3.',
       },
       {
         label: 'Connection',
@@ -236,16 +245,16 @@ export function browserGroup(
         hide: 'Tor Browser reports UTC. Otherwise, set your system timezone to match your VPN.',
       },
       {
-        label: 'System region',
+        label: 'Region of your browser language',
         value: browser.region ? (regions.of(browser.region) ?? browser.region) : null,
-        hide: 'Comes from your system language settings.',
+        hide: 'Comes from your browser language, so it can differ from where you live.',
       },
       {
         label: 'Week starts on',
         value: browser.weekStart
           ? weekdays.format(firstMonday + (browser.weekStart - 1) * day)
           : null,
-        hide: 'Comes from your system locale. Only Chromium-based browsers and Safari report it.',
+        hide: 'Follows your browser language. Only Chromium-based browsers and Safari report it.',
       },
       {
         label: 'Operating system',
@@ -280,8 +289,8 @@ export function browserGroup(
       },
       {
         label: 'Screen',
-        value: `${browser.screen.width}×${browser.screen.height} at ${browser.screen.pixelRatio}x${browser.screen.wideGamut ? ', wide color' : ''}${browser.screen.hdr ? ', HDR' : ''}`,
-        hide: 'Tor Browser and Firefox with fingerprinting resistance report standard sizes.',
+        value: `${display(browser)}${browser.screen.wideGamut ? ', wide color' : ''}${browser.screen.hdr ? ', HDR' : ''}`,
+        hide: 'Tor Browser and Firefox with fingerprinting resistance report standard sizes. Zooming the page changes the scaling we see.',
       },
       {
         label: 'Refresh rate',
@@ -339,8 +348,12 @@ export function browserGroup(
         label: 'Pointing devices',
         value:
           join([
-            browser.pointers.fine ? 'mouse or trackpad' : null,
-            browser.pointers.coarse ? 'touchscreen' : null,
+            browser.pointers.fine ? 'Mouse or trackpad' : null,
+            browser.pointers.coarse
+              ? browser.pointers.fine
+                ? 'touchscreen'
+                : 'Touchscreen'
+              : null,
           ]) ?? 'None reported',
         hide: 'Reported by every browser.',
       },
@@ -349,19 +362,6 @@ export function browserGroup(
         value: scrolling ? capitalize(scrolling) : 'Scroll the page to find out',
         guess: Boolean(scrolling),
         hide: 'Scroll events reveal the device. Every browser shares them.',
-      },
-      {
-        label: 'Disk size',
-        value: browser.diskGb ? storage(browser.diskGb) : null,
-        guess: true,
-        hide: 'Estimated from how much storage Chromium lets a site use. Private windows get far less, and other browsers do not tie it to disk size.',
-      },
-      {
-        label: 'Network type',
-        value: browser.connection
-          ? `${browser.connection.type}${browser.connection.downlinkMbps ? `, about ${browser.connection.downlinkMbps} Mbps` : ''}`
-          : null,
-        hide: 'Only Chromium-based browsers report this.',
       },
       {
         label: 'Extensions we spotted',
@@ -419,7 +419,22 @@ export function browserGroup(
 
 function taskbarSentence(taskbar: NonNullable<BrowserSignals['taskbar']>): string {
   if (!taskbar.side) return `You keep your ${taskbar.name} hidden.`
-  return `Your ${taskbar.name} sits on the ${taskbar.side} of the screen, ${taskbar.size} pixels ${taskbar.side === 'left' || taskbar.side === 'right' ? 'wide' : 'tall'}.`
+  const vertical = taskbar.side === 'left' || taskbar.side === 'right'
+  return `Your ${taskbar.name} sits ${vertical ? 'on' : 'at'} the ${taskbar.side} of the screen, ${taskbar.size} pixels ${vertical ? 'wide' : 'tall'}.`
+}
+
+function display(browser: BrowserSignals): string {
+  const { width, height, pixelRatio } = browser.screen
+  const physical = `${Math.round(width * pixelRatio)}×${Math.round(height * pixelRatio)}`
+  return pixelRatio === 1 ? physical : `${physical}, scaled to ${Math.round(pixelRatio * 100)}%`
+}
+
+function timeIn(zone: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: zone,
+  }).format(new Date())
 }
 
 function batteryTime(battery: NonNullable<BrowserSignals['battery']>): string {
@@ -430,7 +445,7 @@ function batteryTime(battery: NonNullable<BrowserSignals['battery']>): string {
   return battery.charging ? `, full in about ${span}` : `, with about ${span} left`
 }
 
-function usesVpn(server: ConnectionSignals, browser: BrowserSignals): boolean {
+function clockMismatch(server: ConnectionSignals, browser: BrowserSignals): boolean {
   if (!server.timezone) return false
   const connection = utcOffset(server.timezone)
   return connection !== null && connection !== utcOffset(browser.timezone)
@@ -459,7 +474,7 @@ function batteryAmbiguous(battery: NonNullable<BrowserSignals['battery']>): bool
 function graphicsPhrase(gpu: string | null): string {
   if (!gpu) return ''
   if (gpu === softwareRendering) return ', with no graphics chip in use'
-  return `, using the ${gpu} for graphics`
+  return `, and your graphics chip is ${gpu}`
 }
 
 function placeName(server: ConnectionSignals): string | null {
@@ -514,10 +529,6 @@ function uniqueLanguages(tags: string[]): string[] {
 
 function readableZone(zone: string): string {
   return zone.replaceAll('_', ' ')
-}
-
-function storage(gb: number): string {
-  return gb >= 1000 ? `${(gb / 1000).toFixed(1)} TB` : `${Math.round(gb)} GB`
 }
 
 function capitalize(text: string): string {
