@@ -29,12 +29,14 @@ export function AuthPage({
         )}
         <PageHeader title={title} description={description} />
       </div>
-      <div className="flex max-w-sm flex-col gap-6">{children}</div>
-      {footer && (
-        <div className="flex max-w-sm flex-col gap-2 border-t border-border pt-6 text-sm text-muted-foreground">
-          {footer}
-        </div>
-      )}
+      <div className="flex max-w-sm flex-col gap-8">
+        <div className="flex flex-col gap-6">{children}</div>
+        {footer && (
+          <div className="flex flex-col gap-2 border-t border-border pt-6 text-sm text-muted-foreground">
+            {footer}
+          </div>
+        )}
+      </div>
     </Page>
   )
 }
@@ -89,6 +91,23 @@ export function SaveRecoveryCode({
         {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
       </div>
     </>
+  )
+}
+
+export function TurnstileNote() {
+  return (
+    <p className="text-xs text-muted-foreground">
+      Protected by{' '}
+      <a
+        href="https://www.cloudflare.com/turnstile-privacy-policy/"
+        target="_blank"
+        rel="noreferrer"
+        className="underline underline-offset-2 hover:text-foreground"
+      >
+        Cloudflare Turnstile
+      </a>
+      .
+    </p>
   )
 }
 

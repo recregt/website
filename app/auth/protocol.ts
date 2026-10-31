@@ -77,13 +77,28 @@ export type Steps = {
 export type Step = keyof Steps
 export type Reply<S extends Step> = Result<Steps[S]['value'], Steps[S]['error']>
 
-export const handlePattern = /^[a-z0-9][a-z0-9_-]{2,23}$/
+export const handleLength = { min: 3, max: 24 } as const
+
+export const handlePattern = new RegExp(
+  `^[a-z0-9][a-z0-9_-]{${handleLength.min - 1},${handleLength.max - 1}}$`,
+)
 
 export const passkeyNameLength = 64
 
-export const handleRules = 'Handles are 3 to 24 characters: lowercase letters, digits, - and _.'
+export const handleRules = `${handleLength.min} to ${handleLength.max} characters: lowercase letters, numbers, - and _.`
+
+export function tidyHandle(raw: string): string {
+  return raw.toLowerCase().replaceAll('@', '').replace(/\s/g, '-')
+}
+
+export function handleProblem(handle: string): string | null {
+  if (handle.length < handleLength.min) return `At least ${handleLength.min} characters.`
+  if (/[^a-z0-9_-]/.test(handle)) return 'Only letters, numbers, - and _.'
+  if (!/^[a-z0-9]/.test(handle)) return 'Start with a letter or number.'
+  return null
+}
 
 export function normalizeHandle(handle: string): string | null {
-  const normalized = handle.trim().toLowerCase()
+  const normalized = tidyHandle(handle.trim())
   return handlePattern.test(normalized) ? normalized : null
 }

@@ -4,13 +4,13 @@ import { Page } from '~/components/page'
 import { PageHeader } from '~/components/page-header'
 import { Section } from '~/components/section'
 import { Button } from '~/components/ui/button'
-import { Input } from '~/components/ui/input'
 
 import { requireUser } from '../../server/access.server'
 import * as parvus from '../../server/parvus/client.server'
 import { listPasskeys, passkeyLimit } from '../../server/passkeys.server'
 import { clearCookie, sessionCookie } from '../../server/session.server'
 import { findAccount, renameAccount } from '../../server/users.server'
+import { HandleInput } from '../auth/handle-input'
 import { handleRules, normalizeHandle } from '../auth/protocol'
 import { postDate } from '../blog/list'
 import { DeleteAccount } from '../settings/delete-account'
@@ -77,7 +77,9 @@ export default function Settings({
       <Section title="Profile">
         <dl className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
-            <dt className="text-sm font-medium">Handle</dt>
+            <dt className="text-sm font-medium">
+              <label htmlFor="settings-handle">Handle</label>
+            </dt>
             <dd>
               <HandleForm handle={handle} />
             </dd>
@@ -115,21 +117,9 @@ function HandleForm({ handle }: { handle: string }) {
   return (
     <fetcher.Form method="post" className="flex flex-col gap-2">
       <input type="hidden" name="intent" value="rename" />
-      <div className="flex max-w-md gap-2">
-        <div className="relative flex-1">
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
-            @
-          </span>
-          <Input
-            name="handle"
-            aria-label="Handle"
-            defaultValue={handle}
-            required
-            autoComplete="username"
-            autoCapitalize="none"
-            spellCheck={false}
-            className="h-10 pl-7"
-          />
+      <div className="flex max-w-md items-start gap-2">
+        <div className="flex-1">
+          <HandleInput id="settings-handle" defaultValue={handle} className="h-10" />
         </div>
         <Button type="submit" variant="outline" className="h-10" disabled={busy}>
           {busy ? 'Saving…' : 'Save'}
@@ -143,9 +133,7 @@ function HandleForm({ handle }: { handle: string }) {
         <p role="status" className="text-sm text-success">
           Saved. You are now @{result.saved}.
         </p>
-      ) : (
-        <p className="text-sm text-muted-foreground">{handleRules}</p>
-      )}
+      ) : null}
     </fetcher.Form>
   )
 }

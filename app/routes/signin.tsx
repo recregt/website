@@ -77,15 +77,10 @@ export default function SignIn({ loaderData: { next } }: Route.ComponentProps) {
         </>
       }
     >
-      <div className="flex flex-col gap-3">
-        <Button className="h-11 w-full" disabled={busy} onClick={signIn}>
-          <KeyRound />
-          {busy ? 'Waiting for your device…' : 'Sign in with a passkey'}
-        </Button>
-        <p className="text-sm text-muted-foreground">
-          Your browser or password manager will offer the passkey you saved for recregt.
-        </p>
-      </div>
+      <Button className="h-11 w-full" disabled={busy} onClick={signIn}>
+        <KeyRound />
+        {busy ? 'Waiting for your device…' : 'Sign in with a passkey'}
+      </Button>
       <Feedback message={message} />
     </AuthPage>
   )
