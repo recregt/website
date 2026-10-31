@@ -72,7 +72,7 @@ export default function Settings({
 }: Route.ComponentProps) {
   return (
     <Page narrow>
-      <PageHeader title="Settings" description="Your account on recregt." />
+      <PageHeader title="Settings" />
 
       <Section title="Profile">
         <dl className="flex flex-col gap-6">

@@ -11,7 +11,7 @@ import { TrafficChart } from '../../stats/chart'
 import { StatsHero, StatsViews } from '../../stats/header'
 import { type Metric, Metrics } from '../../stats/metrics'
 import { AnalyticsNotice } from '../../stats/notice'
-import { parseRange, rangeLabel } from '../../stats/ranges'
+import { parseRange } from '../../stats/ranges'
 import { RankedList } from '../../stats/ranked-list'
 import { RecentTable, SlowestTable } from '../../stats/tables'
 import { type Rating, rate, type Vital } from '../../stats/vitals'
@@ -30,25 +30,12 @@ export async function loader({ context, request }: Route.LoaderArgs) {
   const stats = await loadAnalytics<SiteStats>(() =>
     full ? fullStats(range, site) : publicStats(range, site),
   )
-  return { range, stats, full, admin: can(user, 'admin') }
+  return { range, stats, admin: can(user, 'admin') }
 }
 
-export default function StatsPage({
-  loaderData: { range, stats, full, admin },
-}: Route.ComponentProps) {
+export default function StatsPage({ loaderData: { range, stats, admin } }: Route.ComponentProps) {
   return (
-    <Page
-      hero={
-        <StatsHero
-          range={range}
-          description={
-            full
-              ? `Live numbers over ${rangeLabel(range)}, in UTC.`
-              : `Anonymized traffic over ${rangeLabel(range)}. Complete ${range === '1d' ? 'hours' : 'days'} only, in UTC.`
-          }
-        />
-      }
-    >
+    <Page hero={<StatsHero range={range} />}>
       {admin && <StatsViews range={range} />}
       {stats.ok ? <Stats stats={stats.value} /> : <AnalyticsNotice reason={stats.reason} />}
     </Page>
