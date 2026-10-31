@@ -13,6 +13,7 @@ import {
   readBrowser,
   type ScrollDevice,
 } from '../../tools/what-you-leak/browser'
+import { Experiment } from '../../tools/what-you-leak/experiment'
 import {
   browserGroup,
   buildStory,
@@ -78,10 +79,11 @@ export default function WhatYouLeak({ loaderData: { connection } }: Route.Compon
           </p>
         )}
         <p className="text-sm text-muted-foreground">
-          Nothing here is saved. Location and network come from this one request, and everything
-          else is read by your browser and stays on your device.
+          Nothing here is saved on our side. Location and network come from this one request, and
+          everything else is read by your browser and stays on your device.
         </p>
       </section>
+      <Experiment />
       <Findings group={connectionGroup(connection)} />
       {browser ? (
         <Findings group={browserGroup(connection, browser, scrolling)} />
