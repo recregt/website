@@ -32,16 +32,16 @@ export function CoverHero({
   return (
     <section
       style={{ '--hero-base': height.base, '--hero-sm': height.sm } as CSSProperties}
-      className="scheme-dark relative isolate flex min-h-(--hero) flex-col justify-end overflow-hidden bg-background text-foreground [--hero:var(--hero-base)] [view-transition-name:cover] sm:[--hero:var(--hero-sm)]"
+      className="scheme-dark relative isolate flex min-h-(--hero) flex-col justify-end overflow-hidden bg-background text-foreground [--hero:var(--hero-base)] sm:[--hero:var(--hero-sm)]"
     >
-      <div className="absolute inset-x-0 top-0 -z-10 h-(--hero)">
+      <div className="absolute inset-x-0 top-0 -z-10 h-(--hero) [view-transition-name:cover-art]">
         <img src={src} srcSet={srcSet} sizes={sizes} alt={alt} className="size-full object-cover" />
         <div
           aria-hidden
           className="absolute inset-0 bg-linear-to-t from-background from-20% via-background/85 via-55% to-transparent"
         />
       </div>
-      <div className={cn(container, 'pt-24 pb-12 sm:pb-16')}>
+      <div className={cn(container, 'pt-24 pb-12 [view-transition-name:cover-text] sm:pb-16')}>
         <div className={cn(narrow && 'max-w-2xl')}>{children}</div>
       </div>
     </section>

@@ -56,6 +56,18 @@
   }
 }
 
+::view-transition-old(root),
+::view-transition-old(cover-text),
+::view-transition-old(cover-art):only-child {
+  display: none;
+}
+
+::view-transition-new(root),
+::view-transition-new(cover-text),
+::view-transition-new(cover-art):only-child {
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),
