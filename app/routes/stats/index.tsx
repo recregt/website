@@ -8,7 +8,7 @@ import { userContext } from '../../../server/session.server'
 import { fullStats, loadAnalytics, publicStats, type SiteStats } from '../../../server/stats.server'
 import { can } from '../../auth/access'
 import { TrafficChart } from '../../stats/chart'
-import { StatsHeader } from '../../stats/header'
+import { StatsHero, StatsViews } from '../../stats/header'
 import { type Metric, Metrics } from '../../stats/metrics'
 import { AnalyticsNotice } from '../../stats/notice'
 import { parseRange, rangeLabel } from '../../stats/ranges'
@@ -37,16 +37,19 @@ export default function StatsPage({
   loaderData: { range, stats, full, admin },
 }: Route.ComponentProps) {
   return (
-    <Page>
-      <StatsHeader
-        range={range}
-        admin={admin}
-        description={
-          full
-            ? `Live numbers over ${rangeLabel(range)}, in UTC.`
-            : `Anonymized traffic over ${rangeLabel(range)}. Complete ${range === '1d' ? 'hours' : 'days'} only, in UTC.`
-        }
-      />
+    <Page
+      hero={
+        <StatsHero
+          range={range}
+          description={
+            full
+              ? `Live numbers over ${rangeLabel(range)}, in UTC.`
+              : `Anonymized traffic over ${rangeLabel(range)}. Complete ${range === '1d' ? 'hours' : 'days'} only, in UTC.`
+          }
+        />
+      }
+    >
+      {admin && <StatsViews range={range} />}
       {stats.ok ? <Stats stats={stats.value} /> : <AnalyticsNotice reason={stats.reason} />}
     </Page>
   )

@@ -1,7 +1,7 @@
-export type ArtOptions = { seed: string; width: number; height: number }
+export type ArtOptions = { seed: string; width: number; height: number; style?: string }
 export type ArtResult = { style: string; accent: string }
 
-export function draw({ seed, width: W, height: H }: ArtOptions): ArtResult {
+export function draw({ seed, width: W, height: H, style: requested }: ArtOptions): ArtResult {
   type RGB = [number, number, number]
   type Field = (x: number, y: number) => number
 
@@ -93,7 +93,11 @@ export function draw({ seed, width: W, height: H }: ArtOptions): ArtResult {
 
   const accentName = pick(Object.keys(accents))
   const accent = accents[accentName] as RGB
+  const secondName =
+    rand() < 0.4 ? pick(Object.keys(accents).filter((name) => name !== accentName)) : accentName
+  const second = accents[secondName] as RGB
   const rgba = ([r, g, b]: RGB, a: number) => `rgba(${r},${g},${b},${a})`
+  const tint = (a: number) => rgba(rand() < 0.5 ? accent : second, a)
 
   type Trace = {
     lines: number
@@ -119,7 +123,7 @@ export function draw({ seed, width: W, height: H }: ArtOptions): ArtResult {
         if (x < 0 || x > W || y < 0 || y > H) break
         ctx.lineTo(x, y)
       }
-      ctx.strokeStyle = lit ? rgba(accent, between(0.35, 0.75)) : rgba(foreground, faint)
+      ctx.strokeStyle = lit ? tint(between(0.35, 0.75)) : rgba(foreground, faint)
       ctx.lineWidth = lit ? width * 1.4 : width
       ctx.stroke()
     }
@@ -233,11 +237,114 @@ export function draw({ seed, width: W, height: H }: ArtOptions): ArtResult {
           }
         }
       }
-      ctx.strokeStyle = lit.has(l)
-        ? rgba(accent, 0.85)
-        : rgba(foreground, 0.16 + (l / levels) * 0.24)
+      ctx.strokeStyle = lit.has(l) ? tint(0.85) : rgba(foreground, 0.16 + (l / levels) * 0.24)
       ctx.lineWidth = lit.has(l) ? 2 : 1.2
       ctx.stroke()
+    }
+  }
+
+  function polyline(points: [number, number][], stroke: string, width: number) {
+    ctx.beginPath()
+    for (const [i, [x, y]] of points.entries()) {
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.strokeStyle = stroke
+    ctx.lineWidth = width
+    ctx.stroke()
+  }
+
+  function waves() {
+    const count = Math.floor(between(40, 90))
+    const amplitude = between(0.08, 0.2) * H
+    const scale = between(0.002, 0.006)
+    const drift = between(0.08, 0.25)
+    const accentShare = between(0.05, 0.15)
+    ctx.lineCap = 'round'
+    for (let i = 0; i <= count; i++) {
+      const base = (i / count) * H
+      const points: [number, number][] = []
+      for (let x = 0; x <= W; x += 4) {
+        points.push([x, base + fbm(x * scale, i * drift) * amplitude])
+      }
+      const lit = rand() < accentShare
+      polyline(points, lit ? tint(0.85) : rgba(foreground, between(0.14, 0.3)), lit ? 2 : 1.2)
+    }
+  }
+
+  function grid() {
+    const cell = between(28, 64)
+    const scale = between(0.001, 0.003)
+    const strength = between(100, 260)
+    const warp = (x: number, y: number): [number, number] => [
+      x + fbm(x * scale, y * scale) * strength,
+      y + fbm(x * scale + 31.7, y * scale + 17.3) * strength,
+    ]
+    const accentShare = between(0.04, 0.12)
+    const line = (points: [number, number][]) => {
+      const lit = rand() < accentShare
+      polyline(points, lit ? tint(0.8) : rgba(foreground, 0.18), lit ? 1.8 : 1)
+    }
+    for (let y = -cell; y <= H + cell; y += cell) {
+      const points: [number, number][] = []
+      for (let x = -cell; x <= W + cell; x += 6) points.push(warp(x, y))
+      line(points)
+    }
+    for (let x = -cell; x <= W + cell; x += cell) {
+      const points: [number, number][] = []
+      for (let y = -cell; y <= H + cell; y += 6) points.push(warp(x, y))
+      line(points)
+    }
+  }
+
+  function rings() {
+    const centers = Array.from({ length: rand() < 0.5 ? 1 : 2 }, () => ({
+      x: between(0.2, 0.8) * W,
+      y: between(0.2, 0.8) * H,
+    }))
+    const count = Math.floor(between(30, 70))
+    const gap = between(14, 30)
+    const distortion = between(0.25, 0.7)
+    const frequency = between(1, 3)
+    const accentShare = between(0.06, 0.16)
+    for (const c of centers) {
+      for (let i = 1; i <= count; i++) {
+        const radius = i * gap
+        const points: [number, number][] = []
+        for (let a = 0; a <= Math.PI * 2 + 0.01; a += 0.02) {
+          const nx = Math.cos(a)
+          const ny = Math.sin(a)
+          const r =
+            radius * (1 + fbm(nx * frequency + c.x * 0.001, ny * frequency + i * 0.05) * distortion)
+          points.push([c.x + nx * r, c.y + ny * r])
+        }
+        const lit = rand() < accentShare
+        polyline(
+          points,
+          lit ? tint(0.8) : rgba(foreground, 0.14 + (1 - i / count) * 0.18),
+          lit ? 2 : 1,
+        )
+      }
+    }
+  }
+
+  function dots() {
+    const spacing = between(9, 18)
+    const scale = between(0.001, 0.003)
+    const threshold = between(-0.2, 0)
+    const accentShare = between(0.08, 0.2)
+    for (let y = spacing / 2; y < H; y += spacing) {
+      for (let x = spacing / 2; x < W; x += spacing) {
+        const jx = x + (rand() - 0.5) * spacing * 0.6
+        const jy = y + (rand() - 0.5) * spacing * 0.6
+        const v = fbm(jx * scale, jy * scale)
+        if (v < threshold) continue
+        const size = Math.min(1, (v - threshold) * 4) * spacing * 0.36
+        ctx.beginPath()
+        ctx.arc(jx, jy, Math.max(0.6, size), 0, Math.PI * 2)
+        ctx.fillStyle = rand() < accentShare ? tint(0.85) : rgba(foreground, 0.18)
+        ctx.fill()
+      }
     }
   }
 
@@ -245,8 +352,9 @@ export function draw({ seed, width: W, height: H }: ArtOptions): ArtResult {
     const x = between(0.2, 0.8) * W
     const y = between(0.2, 0.8) * H
     const g = ctx.createRadialGradient(x, y, 0, x, y, H * between(0.5, 0.9))
-    g.addColorStop(0, rgba(accent, between(0.08, 0.18)))
-    g.addColorStop(1, rgba(accent, 0))
+    const color = rand() < 0.5 ? accent : second
+    g.addColorStop(0, rgba(color, between(0.08, 0.18)))
+    g.addColorStop(1, rgba(color, 0))
     ctx.fillStyle = g
     ctx.fillRect(0, 0, W, H)
   }
@@ -271,13 +379,28 @@ export function draw({ seed, width: W, height: H }: ArtOptions): ArtResult {
     ctx.putImageData(image, 0, 0)
   }
 
-  const styles: Record<string, () => void> = { flow, streams, orbits, contours }
-  const style = pick(Object.keys(styles))
+  const styles: Record<string, () => void> = {
+    flow,
+    streams,
+    orbits,
+    contours,
+    waves,
+    grid,
+    rings,
+    dots,
+  }
+  if (requested && !(requested in styles)) {
+    throw new Error(`unknown style ${requested}, expected one of ${Object.keys(styles).join(', ')}`)
+  }
+  const style = requested ?? pick(Object.keys(styles))
   ctx.fillStyle = rgba(background, 1)
   ctx.fillRect(0, 0, W, H)
   if (rand() < 0.6) glow()
   styles[style]?.()
   vignette()
   grain(14)
-  return { style, accent: accentName }
+  return {
+    style,
+    accent: secondName === accentName ? accentName : `${accentName}+${secondName}`,
+  }
 }

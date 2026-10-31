@@ -17,7 +17,7 @@ import {
 
 import { requireAccess } from '../../../server/access.server'
 import { loadAnalytics, recentRequests } from '../../../server/stats.server'
-import { StatsHeader } from '../../stats/header'
+import { StatsHero, StatsViews } from '../../stats/header'
 import { AnalyticsNotice } from '../../stats/notice'
 import { parseRange, rangeLabel } from '../../stats/ranges'
 import { StatusBadge } from '../../stats/tables'
@@ -54,12 +54,15 @@ type RequestRow = Awaited<ReturnType<typeof recentRequests>>[number]
 
 export default function Requests({ loaderData: { range, requests } }: Route.ComponentProps) {
   return (
-    <Page>
-      <StatsHeader
-        range={range}
-        admin
-        description={`The latest ${history} requests over ${rangeLabel(range)}, newest first, in UTC.`}
-      />
+    <Page
+      hero={
+        <StatsHero
+          range={range}
+          description={`The latest ${history} requests over ${rangeLabel(range)}, newest first, in UTC.`}
+        />
+      }
+    >
+      <StatsViews range={range} />
       {requests.ok ? (
         <RequestBrowser rows={requests.value} />
       ) : (
