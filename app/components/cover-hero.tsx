@@ -7,6 +7,8 @@ import projectsSmall from '~/assets/covers/projects-1600.avif'
 import projectsLarge from '~/assets/covers/projects-3200.avif'
 import statsSmall from '~/assets/covers/stats-1600.avif'
 import statsLarge from '~/assets/covers/stats-3200.avif'
+import toolsSmall from '~/assets/covers/tools-1600.avif'
+import toolsLarge from '~/assets/covers/tools-3200.avif'
 import { container } from '~/components/page'
 import { cn } from '~/lib/utils'
 
@@ -51,6 +53,7 @@ export function CoverHero({
 const siteCovers = {
   home: [homeSmall, homeLarge],
   projects: [projectsSmall, projectsLarge],
+  tools: [toolsSmall, toolsLarge],
   blog: [blogSmall, blogLarge],
   stats: [statsSmall, statsLarge],
 } as const

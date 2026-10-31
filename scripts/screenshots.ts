@@ -21,7 +21,7 @@ const { values, positionals } = parseArgs({
 const paths =
   positionals.length > 0
     ? positionals
-    : ['/', '/projects', '/blog', '/signin', '/stats', '/stats/requests']
+    : ['/', '/projects', '/tools', '/blog', '/signin', '/stats', '/stats/requests']
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH,

@@ -3,7 +3,7 @@ import { z } from 'zod'
 
 import { handlePattern } from '../app/auth/protocol'
 import { type Range, ranges } from '../app/stats/ranges'
-
+import { tools } from '../app/tools/registry'
 import {
   engagementBlobs,
   engagementDoubles,
@@ -57,9 +57,11 @@ export async function publicStats(range: Range, site: URL) {
     const pages = [
       '/',
       '/projects',
+      '/tools',
       '/blog',
       '/stats',
       ...projects.map((project) => `/projects/${project.slug}`),
+      ...tools.map((tool) => `/tools/${tool.slug}`),
       ...posts.map((post) => `/blog/${post.slug}`),
     ]
     const scope = { window, views: pageViews(window, staff) }

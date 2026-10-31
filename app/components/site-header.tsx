@@ -26,6 +26,7 @@ export function SiteHeader({ user }: { user: User | null }) {
         </Link>
         <nav aria-label="Main" className="-mr-2.5 hidden items-center gap-1 text-sm sm:flex">
           <NavItem to="/projects">Projects</NavItem>
+          <NavItem to="/tools">Tools</NavItem>
           <NavItem to="/blog">Blog</NavItem>
           <NavItem to="/stats">Stats</NavItem>
           <span className="mx-2 h-4 w-px bg-border" />
