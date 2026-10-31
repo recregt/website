@@ -1,5 +1,7 @@
 import type { ConnectionSignals } from '../../../server/leak.server'
 import {
+  type Adapter,
+  type Addresses,
   type BrowserSignals,
   type ExtensionKind,
   type FontHint,
@@ -9,6 +11,31 @@ import {
 
 export type Finding = { label: string; value: string | null; hide: string; guess?: boolean }
 export type Group = { title: string; empty: string; findings: Finding[] }
+export type Live = { scrolling: ScrollDevice | null; addresses: Addresses | null | 'pending' }
+
+const gpuVendors: Record<string, string> = {
+  nvidia: 'NVIDIA',
+  amd: 'AMD',
+  intel: 'Intel',
+  apple: 'Apple',
+  qualcomm: 'Qualcomm',
+  arm: 'Arm',
+}
+
+const anVendors = new Set(['nvidia', 'amd', 'intel', 'apple', 'arm'])
+const gpuAcronyms = new Set(['rdna', 'gcn', 'lpg', 'hpg', 'lp', 'hp'])
+
+const gpuSeries: { vendor: string; architecture: string; series: string }[] = [
+  { vendor: 'nvidia', architecture: 'blackwell', series: 'RTX 50 series' },
+  { vendor: 'nvidia', architecture: 'lovelace', series: 'RTX 40 series' },
+  { vendor: 'nvidia', architecture: 'ampere', series: 'RTX 30 series' },
+  { vendor: 'nvidia', architecture: 'turing', series: 'RTX 20 or GTX 16 series' },
+  { vendor: 'nvidia', architecture: 'pascal', series: 'GTX 10 series' },
+  { vendor: 'amd', architecture: 'rdna-4', series: 'Radeon RX 9000 series' },
+  { vendor: 'amd', architecture: 'rdna-3', series: 'Radeon RX 7000 series' },
+  { vendor: 'amd', architecture: 'rdna-2', series: 'Radeon RX 6000 series' },
+  { vendor: 'amd', architecture: 'rdna-1', series: 'Radeon RX 5000 series' },
+]
 
 const macDisplays: Record<string, string> = {
   '1440x900': '13-inch MacBook',
@@ -43,11 +70,37 @@ const weekdays = new Intl.DateTimeFormat('en', { weekday: 'long', timeZone: 'UTC
 export function buildStory(
   server: ConnectionSignals,
   browser: BrowserSignals,
-  scrolling: ScrollDevice | null,
+  live: Live,
 ): string[] {
-  return [where(server, browser), machine(server, browser), habits(server, browser, scrolling)]
+  return [
+    [...where(server, browser), ...network(server, live)],
+    machine(server, browser),
+    habits(server, browser, live.scrolling),
+  ]
     .map((sentences) => sentences.join(' '))
     .filter((paragraph) => paragraph.length > 0)
+}
+
+function network(server: ConnectionSignals, live: Live): string[] {
+  const sentences: string[] = []
+  if (server.hostname) sentences.push(`Your address has a name too: ${server.hostname}.`)
+  if (live.addresses && live.addresses !== 'pending' && server.ip) {
+    const family = (ip: string) => (ip.includes(':') ? 6 : 4)
+    const others = live.addresses.public.filter((address) => address !== server.ip)
+    const sameFamily = others.find((address) => family(address) === family(server.ip as string))
+    const otherFamily = others.find((address) => family(address) !== family(server.ip as string))
+    if (sameFamily) {
+      sentences.push(
+        `WebRTC reveals another public address, ${sameFamily}. If you use a VPN, that is probably your real one.`,
+      )
+    }
+    if (otherFamily) {
+      sentences.push(
+        `WebRTC also gives away your IPv${family(otherFamily)} address, ${otherFamily}, which this page never asked for.`,
+      )
+    }
+  }
+  return sentences
 }
 
 function where(server: ConnectionSignals, browser: BrowserSignals): string[] {
@@ -82,13 +135,15 @@ function where(server: ConnectionSignals, browser: BrowserSignals): string[] {
 
 function machine(server: ConnectionSignals, browser: BrowserSignals): string[] {
   const os = browser.os ?? osFromUserAgent(server.userAgent)
-  const device = browser.model ?? macModel(browser, os)
+  const device = browser.model ?? macModel(browser, os) ?? (laptop(browser) ? 'laptop' : null)
   const sentences: string[] = []
   if (os) {
     sentences.push(
       `You're on ${os}${device ? `, likely a ${device}` : ''}${graphicsPhrase(browser.gpu)}.`,
     )
   }
+  const card = secondGraphics(browser.adapters)
+  if (card) sentences.push(`You also have ${card}.`)
   if (browser.screen.pixelRatio !== 1) {
     sentences.push(`Your display is ${display(browser).replace('×', ' by ')}.`)
   }
@@ -132,6 +187,11 @@ function habits(
   const languages = uniqueLanguages(browser.languages)
   if (languages.length > 1) sentences.push(`You read ${list(languages)}.`)
   if (browser.darkMode) sentences.push('You prefer dark mode.')
+  if (browser.accessibility.length > 0) {
+    sentences.push(
+      `You turned on ${list(browser.accessibility.map((name) => name.toLowerCase()))}.`,
+    )
+  }
   if (browser.adBlocker) sentences.push('You run an ad blocker.')
   if (server.globalPrivacyControl)
     sentences.push('Your browser asks sites not to sell or share your data.')
@@ -152,6 +212,11 @@ export function connectionGroup(server: ConnectionSignals): Group {
           ? `${server.ip}${server.ipVersion ? `, IPv${server.ipVersion}` : ''}`
           : null,
         hide: 'A VPN or Tor replaces it with another address.',
+      },
+      {
+        label: 'Name of your address',
+        value: server.hostname ?? (server.ip ? 'None registered' : null),
+        hide: 'Providers name their addresses, and the name often reveals the connection type or area. A VPN shows its own.',
       },
       {
         label: 'Location',
@@ -209,6 +274,11 @@ export function connectionGroup(server: ConnectionSignals): Group {
         hide: 'Sent as a header when you turn on data saving.',
       },
       {
+        label: 'Compression your browser accepts',
+        value: server.compression.length > 0 ? server.compression.join(', ') : null,
+        hide: 'Newer browsers add zstd, which narrows down your browser version.',
+      },
+      {
         label: 'Languages you accept',
         value: server.languages.length > 0 ? server.languages.join(', ') : null,
         hide: 'Limit your browser to a single language.',
@@ -230,7 +300,7 @@ export function connectionGroup(server: ConnectionSignals): Group {
 export function browserGroup(
   server: ConnectionSignals,
   browser: BrowserSignals,
-  scrolling: ScrollDevice | null,
+  { scrolling, addresses }: Live,
 ): Group {
   const os = browser.os ?? osFromUserAgent(server.userAgent)
   const mac = browser.model ? null : macModel(browser, os)
@@ -269,14 +339,26 @@ export function browserGroup(
       {
         label: 'Device model',
         value:
-          browser.model ?? mac ?? (browser.mobile === false ? 'Not reported for computers' : null),
-        guess: Boolean(mac),
-        hide: 'Phones report their model to Chromium-based browsers. Laptops are guessed from the screen size.',
+          browser.model ??
+          mac ??
+          (laptop(browser)
+            ? 'A laptop, since it reports a battery'
+            : browser.mobile === false
+              ? 'Not reported for computers'
+              : null),
+        guess: Boolean(mac) || (!browser.model && laptop(browser)),
+        hide: 'Phones report their model to Chromium-based browsers. Macs are guessed from the screen size, and laptops from the battery.',
       },
       {
         label: 'Graphics chip',
         value: browser.gpu,
         hide: 'Firefox and Safari report a generic name. Chromium-based browsers show the exact chip.',
+      },
+      {
+        label: 'Graphics adapters',
+        value: adapterList(browser.adapters),
+        guess: Boolean(browser.adapters.performance),
+        hide: 'WebGPU reports the vendor and architecture of each graphics chip, including one this page does not use. Firefox and Safari report less.',
       },
       {
         label: 'Hardware video decoding',
@@ -364,6 +446,18 @@ export function browserGroup(
         hide: 'Scroll events reveal the device. Every browser shares them.',
       },
       {
+        label: 'Public addresses seen by WebRTC',
+        value:
+          addresses === 'pending'
+            ? 'Checking…'
+            : addresses
+              ? addresses.public.length > 0
+                ? addresses.public.join(', ')
+                : 'None found'
+              : null,
+        hide: `Found with a STUN request to Cloudflare. A VPN that does not cover WebRTC exposes your real address here.${addresses && addresses !== 'pending' && addresses.localHidden ? ' Your browser hides your local network address behind a random name.' : ''}`,
+      },
+      {
         label: 'Extensions we spotted',
         value:
           browser.extensions.length > 0
@@ -410,7 +504,11 @@ export function browserGroup(
       },
       {
         label: 'Appearance',
-        value: `${browser.darkMode ? 'Dark' : 'Light'} mode${browser.reducedMotion ? ', reduced motion' : ''}`,
+        value: join([
+          `${browser.darkMode ? 'Dark' : 'Light'} mode`,
+          browser.reducedMotion ? 'reduced motion' : null,
+          ...browser.accessibility.map((name) => name.toLowerCase()),
+        ]),
         hide: 'These follow your system settings.',
       },
     ],
@@ -473,6 +571,56 @@ function utcOffset(zone: string): string | null {
 
 function twentyFourHour(browser: BrowserSignals): boolean {
   return browser.hourCycle === 'h23' || browser.hourCycle === 'h24'
+}
+
+function laptop(browser: BrowserSignals): boolean {
+  return (
+    browser.battery !== null &&
+    !batteryAmbiguous(browser.battery) &&
+    browser.mobile !== true &&
+    browser.pointers.fine
+  )
+}
+
+function describeAdapter(adapter: Adapter): string {
+  const vendorKey = adapter.vendor.toLowerCase()
+  const vendor = gpuVendors[vendorKey] ?? capitalize(adapter.vendor)
+  const architecture = adapter.architecture
+    ? adapter.architecture.split('-').map(architectureWord).join(' ')
+    : null
+  const series = seriesOf(adapter)
+  return join([vendor || null, architecture, series ? `likely ${series}` : null]) ?? 'Unknown'
+}
+
+function architectureWord(word: string): string {
+  if (gpuAcronyms.has(word)) return word.toUpperCase()
+  const suffixed = word.match(/^(\d+)([a-z]+)$/)
+  if (suffixed) return `${suffixed[1]}${suffixed[2]?.toUpperCase()}`
+  return capitalize(word)
+}
+
+function seriesOf(adapter: Adapter): string | undefined {
+  const vendor = adapter.vendor.toLowerCase()
+  return gpuSeries.find(
+    (entry) => vendor === entry.vendor && adapter.architecture.includes(entry.architecture),
+  )?.series
+}
+
+function secondGraphics(adapters: BrowserSignals['adapters']): string | null {
+  const { integrated, performance } = adapters
+  if (!integrated || !performance || integrated.vendor === performance.vendor) return null
+  const key = performance.vendor.toLowerCase()
+  const vendor = gpuVendors[key] ?? performance.vendor
+  const series = seriesOf(performance)
+  return `${anVendors.has(key) ? 'an' : 'a'} ${vendor} graphics card${series ? `, likely ${series}` : ''}`
+}
+
+function adapterList(adapters: BrowserSignals['adapters']): string | null {
+  const described = [adapters.integrated, adapters.performance]
+    .filter((adapter): adapter is Adapter => adapter !== null)
+    .map(describeAdapter)
+  const unique = [...new Set(described)]
+  return unique.length > 0 ? unique.join('; ') : null
 }
 
 function batteryAmbiguous(battery: NonNullable<BrowserSignals['battery']>): boolean {

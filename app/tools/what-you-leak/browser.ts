@@ -19,6 +19,11 @@ type ExtendedNavigator = Navigator & {
   getBattery?: () => Promise<Battery>
   deviceMemory?: number
   brave?: { isBrave(): Promise<boolean> }
+  gpu?: {
+    requestAdapter(options?: { powerPreference?: 'low-power' | 'high-performance' }): Promise<{
+      info?: { vendor: string; architecture: string }
+    } | null>
+  }
 }
 
 type ExtendedScreen = Screen & {
@@ -44,6 +49,8 @@ type Wallet = {
 export type FontHint = 'developer' | 'office' | 'adobe' | 'latex'
 export type ExtensionKind = 'developer' | 'wallet' | 'writing' | 'reading'
 export type ScrollDevice = 'trackpad' | 'mouse wheel'
+export type Adapter = { vendor: string; architecture: string }
+export type Addresses = { public: string[]; localHidden: boolean }
 
 export type BrowserSignals = {
   timezone: string
@@ -79,6 +86,8 @@ export type BrowserSignals = {
   adBlocker: boolean
   darkMode: boolean
   reducedMotion: boolean
+  accessibility: string[]
+  adapters: { integrated: Adapter | null; performance: Adapter | null }
   historyLength: number
   audio: { channels: number; sampleRateKhz: number } | null
   videoDecoding: string[] | null
@@ -112,6 +121,15 @@ const videoCodecs = [
 
 const sampleVideo = { width: 1920, height: 1080, bitrate: 8_000_000, framerate: 30 }
 
+const accessibilitySettings = [
+  { name: 'High contrast', query: '(prefers-contrast: more)' },
+  { name: 'Forced colors', query: '(forced-colors: active)' },
+  { name: 'Reduced transparency', query: '(prefers-reduced-transparency: reduce)' },
+  { name: 'Inverted colors', query: '(inverted-colors: inverted)' },
+]
+
+const stunServer = 'stun:stun.cloudflare.com:3478'
+
 const commonRefreshRates = [30, 48, 50, 60, 75, 90, 100, 120, 144, 165, 180, 240, 360]
 const refreshSamples = 30
 const wheelSamples = 3
@@ -122,7 +140,7 @@ export async function readBrowser(): Promise<BrowserSignals> {
   const format = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
   const fine = matchMedia('(any-pointer: fine)').matches
   const coarse = matchMedia('(any-pointer: coarse)').matches
-  const [highEntropy, battery, keyboard, adBlocker, refreshHz, brave, videoDecoding] =
+  const [highEntropy, battery, keyboard, adBlocker, refreshHz, brave, videoDecoding, adapters] =
     await Promise.all([
       nav.userAgentData
         ?.getHighEntropyValues([
@@ -139,6 +157,7 @@ export async function readBrowser(): Promise<BrowserSignals> {
       measureRefreshRate(),
       nav.brave?.isBrave().catch(() => false) ?? false,
       readVideoDecoding(),
+      readAdapters(nav),
     ])
   const os = describeOs(nav.userAgentData?.platform ?? null, highEntropy?.platformVersion ?? null)
   const desktop = fine && !nav.userAgentData?.mobile
@@ -194,6 +213,10 @@ export async function readBrowser(): Promise<BrowserSignals> {
     adBlocker,
     darkMode: matchMedia('(prefers-color-scheme: dark)').matches,
     reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    accessibility: accessibilitySettings
+      .filter((setting) => matchMedia(setting.query).matches)
+      .map((setting) => setting.name),
+    adapters,
     historyLength: history.length,
     audio: readAudio(),
     videoDecoding,
@@ -207,6 +230,53 @@ export function listenForVoices(onChange: (voices: BrowserSignals['voices']) => 
   const update = () => onChange(readVoices())
   speechSynthesis.addEventListener('voiceschanged', update)
   return () => speechSynthesis.removeEventListener('voiceschanged', update)
+}
+
+export function discoverAddresses(onDone: (addresses: Addresses | null) => void): () => void {
+  if (!('RTCPeerConnection' in window)) {
+    onDone(null)
+    return () => {}
+  }
+  const connection = new RTCPeerConnection({ iceServers: [{ urls: stunServer }] })
+  const found = new Set<string>()
+  let localHidden = false
+  let finished = false
+  const finish = () => {
+    if (finished) return
+    finished = true
+    connection.close()
+    onDone({ public: [...found], localHidden })
+  }
+  connection.addEventListener('icecandidate', (event) => {
+    if (!event.candidate) {
+      finish()
+      return
+    }
+    const { address, type } = event.candidate
+    if (type === 'srflx' && address) found.add(address)
+    if (type === 'host' && address?.endsWith('.local')) localHidden = true
+  })
+  connection.createDataChannel('')
+  connection
+    .createOffer()
+    .then((offer) => connection.setLocalDescription(offer))
+    .catch(finish)
+  return () => {
+    finished = true
+    connection.close()
+  }
+}
+
+async function readAdapters(nav: ExtendedNavigator): Promise<BrowserSignals['adapters']> {
+  const read = async (powerPreference: 'low-power' | 'high-performance') => {
+    const adapter = await nav.gpu?.requestAdapter({ powerPreference }).catch(() => null)
+    const info = adapter?.info
+    return info && (info.vendor || info.architecture)
+      ? { vendor: info.vendor, architecture: info.architecture }
+      : null
+  }
+  const [integrated, performance] = await Promise.all([read('low-power'), read('high-performance')])
+  return { integrated, performance }
 }
 
 export function listenForScrolling(onDetect: (device: ScrollDevice) => void): () => void {
