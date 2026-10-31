@@ -187,9 +187,9 @@ export function connectionGroup(server: ConnectionSignals): Group {
         hide: 'Compared with your clock, it exposes VPNs that do not match your location.',
       },
       {
-        label: 'Distance to our server',
+        label: 'Cloudflare data center',
         value: server.colo
-          ? `${server.rttMs !== null ? `${server.rttMs} ms round trip to ` : 'Served by '}Cloudflare's ${server.colo} data center`
+          ? `${server.colo}${server.rttMs !== null ? `, ${server.rttMs} ms round trip` : ''}`
           : null,
         hide: 'Round trip time grows with distance, and a VPN adds its own delay. It is not measured over HTTP/3.',
       },
@@ -307,7 +307,7 @@ export function browserGroup(
         label: 'Taskbar or Dock',
         value: browser.taskbar
           ? browser.taskbar.side
-            ? `${capitalize(browser.taskbar.name)} on the ${browser.taskbar.side}, ${browser.taskbar.size} pixels`
+            ? `${capitalize(browser.taskbar.name)} ${placement(browser.taskbar.side)}, ${browser.taskbar.size} pixels`
             : `${capitalize(browser.taskbar.name)} hidden`
           : null,
         hide: 'Read from the part of the screen windows may use. Firefox with fingerprinting resistance hides it.',
@@ -420,13 +420,21 @@ export function browserGroup(
 function taskbarSentence(taskbar: NonNullable<BrowserSignals['taskbar']>): string {
   if (!taskbar.side) return `You keep your ${taskbar.name} hidden.`
   const vertical = taskbar.side === 'left' || taskbar.side === 'right'
-  return `Your ${taskbar.name} sits ${vertical ? 'on' : 'at'} the ${taskbar.side} of the screen, ${taskbar.size} pixels ${vertical ? 'wide' : 'tall'}.`
+  return `Your ${taskbar.name} sits ${placement(taskbar.side)} of the screen, ${taskbar.size} pixels ${vertical ? 'wide' : 'tall'}.`
+}
+
+function placement(side: 'top' | 'bottom' | 'left' | 'right'): string {
+  return `${side === 'left' || side === 'right' ? 'on' : 'at'} the ${side}`
 }
 
 function display(browser: BrowserSignals): string {
   const { width, height, pixelRatio } = browser.screen
-  const physical = `${Math.round(width * pixelRatio)}×${Math.round(height * pixelRatio)}`
-  return pixelRatio === 1 ? physical : `${physical}, scaled to ${Math.round(pixelRatio * 100)}%`
+  if (pixelRatio === 1) return `${width}×${height}`
+  return `${evenPixels(width * pixelRatio)}×${evenPixels(height * pixelRatio)}, scaled to ${Math.round(pixelRatio * 100)}%`
+}
+
+function evenPixels(size: number): number {
+  return Math.round(size / 2) * 2
 }
 
 function timeIn(zone: string): string {
