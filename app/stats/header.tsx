@@ -12,10 +12,10 @@ const views = [
   { to: '/stats/requests', label: 'Requests' },
 ]
 
-export function StatsHero({ range, description }: { range: Range; description: string }) {
+export function StatsHero({ range }: { range: Range }) {
   return (
-    <SiteHero narrow={false}>
-      <PageHeader title="Stats" description={description} actions={<RangeTabs range={range} />} />
+    <SiteHero page="stats" narrow={false}>
+      <PageHeader title="Stats" actions={<RangeTabs range={range} />} />
     </SiteHero>
   )
 }

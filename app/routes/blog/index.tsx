@@ -18,7 +18,7 @@ export default function Blog({ loaderData: { posts } }: Route.ComponentProps) {
     <Page
       narrow
       hero={
-        <SiteHero>
+        <SiteHero page="blog">
           <PageHeader title="Blog" />
         </SiteHero>
       }
