@@ -1,56 +1,58 @@
 import { defineArrayMember, defineField, defineType } from 'sanity'
+import { isIncomingReferenceCreation } from 'sanity/structure'
 
-const alt = defineField({
-  name: 'alt',
-  title: 'Alternative Text',
-  type: 'string',
-  validation: (rule) => rule.required(),
-})
+import { body, coverImage, slug, summary, title } from './fields'
+
+const date = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeZone: 'UTC' })
 
 export const post = defineType({
   name: 'post',
   type: 'document',
   fields: [
-    defineField({
-      name: 'title',
-      type: 'string',
-      validation: (rule) => rule.required(),
-    }),
-    defineField({
-      name: 'slug',
-      type: 'slug',
-      options: { source: 'title' },
-      validation: (rule) => rule.required(),
-    }),
+    title,
+    slug,
     defineField({
       name: 'publishedAt',
       type: 'datetime',
       initialValue: () => new Date().toISOString(),
       validation: (rule) => rule.required(),
     }),
+    summary,
     defineField({
-      name: 'summary',
-      type: 'text',
-      rows: 3,
-      validation: (rule) => rule.required().max(200),
-    }),
-    defineField({
-      name: 'coverImage',
-      type: 'image',
-      options: { hotspot: true },
-      fields: [alt],
-    }),
-    defineField({
-      name: 'body',
+      name: 'projects',
       type: 'array',
-      of: [
-        defineArrayMember({ type: 'block' }),
-        defineArrayMember({ type: 'image', options: { hotspot: true }, fields: [alt] }),
-      ],
-      validation: (rule) => rule.required(),
+      of: [defineArrayMember({ type: 'reference', to: [{ type: 'project' }] })],
+      validation: (rule) => rule.unique(),
     }),
+    coverImage,
+    body,
+  ],
+  initialValue: (params) =>
+    isIncomingReferenceCreation(params)
+      ? { projects: [{ ...params.reference, _key: crypto.randomUUID() }] }
+      : {},
+  orderings: [
+    {
+      title: 'Newest first',
+      name: 'publishedAtDesc',
+      by: [{ field: 'publishedAt', direction: 'desc' }],
+    },
   ],
   preview: {
-    select: { title: 'title', subtitle: 'publishedAt', media: 'coverImage' },
+    select: {
+      title: 'title',
+      publishedAt: 'publishedAt',
+      project: 'projects.0.title',
+      projects: 'projects',
+      media: 'coverImage',
+    },
+    prepare: ({ title, publishedAt, project, projects, media }) => {
+      const others = Array.isArray(projects) ? projects.length - 1 : 0
+      const parts = [
+        publishedAt ? date.format(new Date(publishedAt)) : 'No date',
+        project && (others > 0 ? `${project} +${others}` : project),
+      ]
+      return { title, subtitle: parts.filter(Boolean).join(' · '), media }
+    },
   },
 })

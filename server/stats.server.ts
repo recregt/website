@@ -11,8 +11,8 @@ import {
   requestDoubles,
   siteHost,
 } from './analytics.server'
-import { listPosts } from './blog.server'
 import { cached } from './cache.server'
+import { listPosts, listProjects } from './content.server'
 import { adminHandles } from './users.server'
 
 const request = columns(requestBlobs, requestDoubles)
@@ -49,8 +49,19 @@ export async function publicStats(range: Range, site: URL) {
   const window = windowFor(range, true)
   const key = new URL(`/__cache/stats/${env.CF_VERSION_METADATA.id}/${range}`, site)
   return cached(key, window.next, async () => {
-    const [posts, staff] = await Promise.all([listPosts(), adminHandles()])
-    const pages = ['/', '/blog', '/stats', ...posts.map((post) => `/blog/${post.slug}`)]
+    const [posts, projects, staff] = await Promise.all([
+      listPosts(),
+      listProjects(),
+      adminHandles(),
+    ])
+    const pages = [
+      '/',
+      '/projects',
+      '/blog',
+      '/stats',
+      ...projects.map((project) => `/projects/${project.slug}`),
+      ...posts.map((post) => `/blog/${post.slug}`),
+    ]
     const scope = { window, views: pageViews(window, staff) }
     const listed = `${scope.views} AND ${request.path} IN (${sqlList(pages, pagePath)})`
     return {

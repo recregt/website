@@ -2,18 +2,21 @@ import { Link } from 'react-router'
 
 import { Notice } from '~/components/notice'
 import { Page } from '~/components/page'
+import { Section } from '~/components/section'
 
-import { listPosts } from '../../server/blog.server'
+import { listPosts, listProjects } from '../../server/content.server'
 import { PostList } from '../blog/list'
+import { ProjectList } from '../projects/list'
 import type { Route } from './+types/home'
 
 export const meta: Route.MetaFunction = () => [{ title: 'recregt' }]
 
 export async function loader() {
-  return { posts: (await listPosts()).slice(0, 3) }
+  const [posts, projects] = await Promise.all([listPosts(), listProjects()])
+  return { posts: posts.slice(0, 3), featured: projects.filter((project) => project.featured) }
 }
 
-export default function Home({ loaderData: { posts } }: Route.ComponentProps) {
+export default function Home({ loaderData: { posts, featured } }: Route.ComponentProps) {
   return (
     <Page narrow>
       <div className="pt-6">
@@ -22,35 +25,37 @@ export default function Home({ loaderData: { posts } }: Route.ComponentProps) {
           Notes and experiments on the modern web.
         </p>
       </div>
-      <section>
-        <div className="flex items-baseline justify-between border-b border-border pb-3">
-          <h2 className="text-sm font-medium">Latest writing</h2>
-          {posts.length > 0 && (
-            <Link
-              to="/blog"
-              viewTransition
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              All posts
-            </Link>
-          )}
-        </div>
+      {featured.length > 0 && (
+        <Section title="Selected projects" action={<More to="/projects">All projects</More>}>
+          <ProjectList projects={featured} />
+        </Section>
+      )}
+      <Section
+        title="Latest writing"
+        action={posts.length > 0 && <More to="/blog">All posts</More>}
+      >
         {posts.length > 0 ? (
           <PostList posts={posts} />
         ) : (
-          <div className="pt-6">
-            <Notice
-              action={
-                <Link to="/stats" viewTransition className="text-sm font-medium text-ring">
-                  See how the site is doing
-                </Link>
-              }
-            >
-              Nothing published yet.
-            </Notice>
-          </div>
+          <Notice
+            action={
+              <Link to="/stats" viewTransition className="text-sm font-medium text-ring">
+                See how the site is doing
+              </Link>
+            }
+          >
+            Nothing published yet.
+          </Notice>
         )}
-      </section>
+      </Section>
     </Page>
+  )
+}
+
+function More({ to, children }: { to: string; children: string }) {
+  return (
+    <Link to={to} viewTransition className="hover:text-foreground">
+      {children}
+    </Link>
   )
 }

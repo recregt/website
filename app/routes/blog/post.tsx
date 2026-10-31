@@ -1,11 +1,13 @@
-import { data } from 'react-router'
+import { data, Link } from 'react-router'
 
+import { Meta } from '~/components/meta'
 import { Page } from '~/components/page'
+import { Section } from '~/components/section'
 
-import { findPost } from '../../../server/blog.server'
-import { Body } from '../../blog/body'
-import { postDate } from '../../blog/list'
-import { imageUrl } from '../../blog/sanity'
+import { findPost } from '../../../server/content.server'
+import { PostList, postDate } from '../../blog/list'
+import { Body } from '../../content/body'
+import { imageUrl } from '../../content/sanity'
 import type { Route } from './+types/post'
 
 export const meta: Route.MetaFunction = ({ loaderData }) => [
@@ -24,9 +26,21 @@ export default function BlogPost({ loaderData: { post } }: Route.ComponentProps)
     <Page narrow>
       <article>
         <header>
-          <time className="text-sm text-muted-foreground" dateTime={post.publishedAt.toISOString()}>
-            {postDate.format(post.publishedAt)}
-          </time>
+          <Meta>
+            <time dateTime={post.publishedAt.toISOString()}>
+              {postDate.format(post.publishedAt)}
+            </time>
+            {post.projects.map((project) => (
+              <Link
+                key={project.slug}
+                to={`/projects/${project.slug}`}
+                viewTransition
+                className="font-mono transition-colors hover:text-ring"
+              >
+                {project.title}
+              </Link>
+            ))}
+          </Meta>
           <h1 className="mt-2 font-heading text-4xl font-medium tracking-tight text-balance sm:text-5xl">
             {post.title}
           </h1>
@@ -43,6 +57,25 @@ export default function BlogPost({ loaderData: { post } }: Route.ComponentProps)
           <Body value={post.body} />
         </div>
       </article>
+      {post.projects
+        .filter((project) => project.posts.length > 0)
+        .map((project) => (
+          <Section
+            key={project.slug}
+            title={`More on ${project.title}`}
+            action={
+              <Link
+                to={`/projects/${project.slug}`}
+                viewTransition
+                className="hover:text-foreground"
+              >
+                About the project
+              </Link>
+            }
+          >
+            <PostList posts={project.posts} />
+          </Section>
+        ))}
     </Page>
   )
 }

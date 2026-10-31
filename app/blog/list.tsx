@@ -1,6 +1,8 @@
 import { Link } from 'react-router'
 
-import type { PostSummary } from '../../server/blog.server'
+import { Meta } from '~/components/meta'
+
+import type { PostSummary } from '../../server/content.server'
 
 export const postDate = new Intl.DateTimeFormat('en', { dateStyle: 'long', timeZone: 'UTC' })
 
@@ -10,12 +12,16 @@ export function PostList({ posts }: { posts: PostSummary[] }) {
       {posts.map((post) => (
         <li key={post.slug}>
           <Link to={`/blog/${post.slug}`} viewTransition className="group block py-6">
-            <time
-              className="text-sm text-muted-foreground"
-              dateTime={post.publishedAt.toISOString()}
-            >
-              {postDate.format(post.publishedAt)}
-            </time>
+            <Meta>
+              <time dateTime={post.publishedAt.toISOString()}>
+                {postDate.format(post.publishedAt)}
+              </time>
+              {post.projects.map((project) => (
+                <span key={project.slug} className="font-mono">
+                  {project.title}
+                </span>
+              ))}
+            </Meta>
             <h2 className="mt-1 font-heading text-2xl font-medium tracking-tight transition-colors group-hover:text-ring">
               {post.title}
             </h2>
