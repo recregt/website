@@ -6,6 +6,10 @@ export default [
     index('routes/projects/index.tsx'),
     route(':slug', 'routes/projects/project.tsx'),
   ]),
+  ...prefix('tools', [
+    index('routes/tools/index.tsx'),
+    route('what-you-leak', 'routes/tools/what-you-leak.tsx'),
+  ]),
   ...prefix('blog', [index('routes/blog/index.tsx'), route(':slug', 'routes/blog/post.tsx')]),
   route('signin', 'routes/signin.tsx'),
   route('signup', 'routes/signup.tsx'),

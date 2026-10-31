@@ -51,6 +51,9 @@ export function MobileMenu({ user }: { user: User | null }) {
               <Item to="/projects" onSelect={close}>
                 Projects
               </Item>
+              <Item to="/tools" onSelect={close}>
+                Tools
+              </Item>
               <Item to="/blog" onSelect={close}>
                 Blog
               </Item>

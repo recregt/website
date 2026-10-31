@@ -17,6 +17,9 @@ export function SiteFooter() {
           <Link to="/projects" viewTransition className="hover:text-foreground">
             Projects
           </Link>
+          <Link to="/tools" viewTransition className="hover:text-foreground">
+            Tools
+          </Link>
           <Link to="/blog" viewTransition className="hover:text-foreground">
             Blog
           </Link>
