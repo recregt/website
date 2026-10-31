@@ -8,7 +8,7 @@ import { Section } from '~/components/section'
 import { findProject } from '../../../server/content.server'
 import { PostList } from '../../blog/list'
 import { Body } from '../../content/body'
-import { coverWidth, imageUrl } from '../../content/sanity'
+import { coverSources } from '../../content/sanity'
 import { statusLabel } from '../../projects/list'
 import type { Route } from './+types/project'
 
@@ -66,7 +66,7 @@ export default function Project({ loaderData: { project } }: Route.ComponentProp
       narrow
       hero={
         cover && (
-          <CoverHero src={imageUrl(cover, coverWidth)} alt={cover.alt ?? ''}>
+          <CoverHero {...coverSources(cover)} alt={cover.alt ?? ''}>
             {header}
           </CoverHero>
         )

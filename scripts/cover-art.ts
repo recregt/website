@@ -1,17 +1,32 @@
-export type ArtOptions = { seed: string; width: number; height: number; style?: string }
+export type ArtOptions = {
+  seed: string
+  width: number
+  height: number
+  density: number
+  style?: string
+}
 export type ArtResult = { style: string; accent: string }
 
-export function draw({ seed, width: W, height: H, style: requested }: ArtOptions): ArtResult {
+export function draw({
+  seed,
+  width: W,
+  height: H,
+  density,
+  style: requested,
+}: ArtOptions): ArtResult {
   type RGB = [number, number, number]
   type Field = (x: number, y: number) => number
 
   const canvas = document.createElement('canvas')
-  canvas.width = W
-  canvas.height = H
+  canvas.width = W * density
+  canvas.height = H * density
+  canvas.style.width = `${W}px`
+  canvas.style.height = `${H}px`
   document.body.appendChild(canvas)
   const context = canvas.getContext('2d')
   if (!context) throw new Error('canvas 2d context unavailable')
   const ctx = context
+  ctx.scale(density, density)
 
   const background: RGB = [14, 15, 17]
   const foreground: RGB = [244, 244, 245]
@@ -368,7 +383,7 @@ export function draw({ seed, width: W, height: H, style: requested }: ArtOptions
   }
 
   function grain(amount: number) {
-    const image = ctx.getImageData(0, 0, W, H)
+    const image = ctx.getImageData(0, 0, canvas.width, canvas.height)
     const d = image.data
     for (let i = 0; i < d.length; i += 4) {
       const n = (rand() - 0.5) * amount

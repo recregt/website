@@ -8,7 +8,7 @@ import { Section } from '~/components/section'
 import { findPost } from '../../../server/content.server'
 import { PostList, postDate } from '../../blog/list'
 import { Body } from '../../content/body'
-import { coverWidth, imageUrl } from '../../content/sanity'
+import { coverSources } from '../../content/sanity'
 import type { Route } from './+types/post'
 
 export const meta: Route.MetaFunction = ({ loaderData }) => [
@@ -50,7 +50,7 @@ export default function BlogPost({ loaderData: { post } }: Route.ComponentProps)
       narrow
       hero={
         cover && (
-          <CoverHero src={imageUrl(cover, coverWidth)} alt={cover.alt ?? ''}>
+          <CoverHero {...coverSources(cover)} alt={cover.alt ?? ''}>
             {header}
           </CoverHero>
         )
