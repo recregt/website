@@ -7,7 +7,7 @@ import { Section } from '~/components/section'
 import { findPost } from '../../../server/content.server'
 import { PostList, postDate } from '../../blog/list'
 import { Body } from '../../content/body'
-import { imageUrl } from '../../content/sanity'
+import { coverWidth, imageUrl } from '../../content/sanity'
 import type { Route } from './+types/post'
 
 export const meta: Route.MetaFunction = ({ loaderData }) => [
@@ -49,7 +49,7 @@ export default function BlogPost({ loaderData: { post } }: Route.ComponentProps)
         {post.coverImage && (
           <img
             className="mt-10 rounded-lg border border-border"
-            src={imageUrl(post.coverImage, 1600)}
+            src={imageUrl(post.coverImage, coverWidth)}
             alt={post.coverImage.alt ?? ''}
           />
         )}

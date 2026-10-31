@@ -4,6 +4,7 @@ node_modules
 /.wrangler
 /.parvus
 /.screenshots
+/.covers
 /worker-configuration.d.ts
 .dev.vars
 /studio/dist

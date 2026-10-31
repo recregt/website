@@ -42,6 +42,7 @@
           check = app "check" [ pkgs.nodejs_24 pkgs.pnpm pkgs.biome ] ''
             pnpm check
           '';
+          cover = browser "cover";
           screenshots = browser "screenshots";
           session = browser "session";
         }
