@@ -49,12 +49,14 @@ export type ConnectionSignals = {
   tlsVersion: string | null
   tlsCipher: string | null
   rttMs: number | null
+  inEu: boolean
+  ipVersion: 4 | 6 | null
   priority: string | null
+  saveData: boolean
   languages: string[]
   userAgent: string | null
   globalPrivacyControl: boolean
   doNotTrack: boolean
-  saveData: boolean
   referrer: string | null
 }
 
@@ -62,8 +64,9 @@ export function connectionSignals(request: Request): ConnectionSignals {
   const cf = request.cf
   const headers = request.headers
   const isp = text(cf?.asOrganization)
+  const ip = headers.get('cf-connecting-ip')
   return {
-    ip: headers.get('cf-connecting-ip'),
+    ip,
     city: text(cf?.city),
     region: text(cf?.region),
     country: text(cf?.country),
@@ -79,12 +82,14 @@ export function connectionSignals(request: Request): ConnectionSignals {
     tlsVersion: text(cf?.tlsVersion),
     tlsCipher: text(cf?.tlsCipher),
     rttMs: typeof cf?.clientTcpRtt === 'number' ? cf.clientTcpRtt : null,
+    inEu: cf?.isEUCountry === '1',
+    ipVersion: ip ? (ip.includes(':') ? 6 : 4) : null,
     priority: text(cf?.requestPriority),
+    saveData: headers.get('save-data') === 'on',
     languages: acceptedLanguages(headers.get('accept-language')),
     userAgent: headers.get('user-agent'),
     globalPrivacyControl: headers.get('sec-gpc') === '1',
     doNotTrack: headers.get('dnt') === '1',
-    saveData: headers.get('save-data') === 'on',
     referrer: headers.get('referer'),
   }
 }

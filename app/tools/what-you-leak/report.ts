@@ -1,5 +1,11 @@
 import type { ConnectionSignals } from '../../../server/leak.server'
-import { type BrowserSignals, type FontHint, softwareRendering } from './browser'
+import {
+  type BrowserSignals,
+  type ExtensionKind,
+  type FontHint,
+  type ScrollDevice,
+  softwareRendering,
+} from './browser'
 
 export type Finding = { label: string; value: string | null; hide: string; guess?: boolean }
 export type Group = { title: string; empty: string; findings: Finding[] }
@@ -16,54 +22,113 @@ const fontHintSentences: Record<FontHint, string> = {
   developer: 'Your installed fonts suggest you write code.',
   office: 'You have Microsoft Office fonts installed.',
   adobe: 'You have Adobe fonts installed, so you probably use their design apps.',
+  latex: 'You have LaTeX fonts installed, so you probably write papers or technical documents.',
 }
+
+const extensionReasons: Record<ExtensionKind, string> = {
+  developer: 'so you probably build websites',
+  wallet: 'so you likely hold crypto',
+  writing: 'to check your writing',
+  reading: 'to darken the sites you read',
+}
+
+const standardRefreshHz = 60
+const firstMonday = Date.UTC(2024, 0, 1)
+const day = 86_400_000
 
 const regions = new Intl.DisplayNames(['en'], { type: 'region' })
 const languageNames = new Intl.DisplayNames(['en'], { type: 'language' })
+const weekdays = new Intl.DateTimeFormat('en', { weekday: 'long', timeZone: 'UTC' })
 
-export function buildStory(server: ConnectionSignals, browser: BrowserSignals): string[] {
+export function buildStory(
+  server: ConnectionSignals,
+  browser: BrowserSignals,
+  scrolling: ScrollDevice | null,
+): string[] {
+  return [where(server, browser), machine(server, browser), habits(server, browser, scrolling)]
+    .map((sentences) => sentences.join(' '))
+    .filter((paragraph) => paragraph.length > 0)
+}
+
+function where(server: ConnectionSignals, browser: BrowserSignals): string[] {
   const place = placeName(server)
   const vpn = usesVpn(server, browser)
-  const os = browser.os ?? osFromUserAgent(server.userAgent)
-  const device = browser.model ?? macModel(browser, os)
-  const fonts = new Set(browser.fonts.map((font) => font.hint))
-  const languages = uniqueLanguages(browser.languages)
-
-  const story = [
+  const sentences = [
     `It's ${browser.time}${twentyFourHour(browser) ? ` ${partOfDay(browser.hour)}` : ''} for you${place && !vpn ? `, and you're in or near ${place}` : ''}.`,
   ]
   if (vpn && place) {
-    story.push(
+    sentences.push(
       `Your connection appears to come from ${place}, but your clock is set to ${readableZone(browser.timezone)}, a different time zone, which usually means a VPN or proxy.`,
     )
   } else if (server.network === 'hosting' && server.isp) {
-    story.push(
+    sentences.push(
       `You're connecting through ${server.isp}, a hosting network, which usually means a VPN or proxy.`,
     )
   } else if (server.isp) {
-    story.push(
+    sentences.push(
       `Your internet comes from ${server.isp}${server.network === 'mobile' ? ' over a mobile network' : ''}.`,
     )
   }
+  if (server.inEu) sentences.push("You're in the EU, so GDPR limits what sites may do with this.")
+  return sentences
+}
+
+function machine(server: ConnectionSignals, browser: BrowserSignals): string[] {
+  const os = browser.os ?? osFromUserAgent(server.userAgent)
+  const device = browser.model ?? macModel(browser, os)
+  const sentences: string[] = []
   if (os) {
-    story.push(
+    sentences.push(
       `You're on ${os}${device ? `, likely a ${device}` : ''}${graphicsPhrase(browser.gpu)}.`,
     )
   }
-  if (browser.extendedDisplay) story.push('You have more than one screen connected.')
-  if (browser.battery && !batteryAmbiguous(browser.battery)) {
-    story.push(
-      `Your battery is at ${Math.round(browser.battery.level * 100)}% and ${browser.battery.charging ? 'charging' : 'not charging'}.`,
+  if (browser.refreshHz && browser.refreshHz > standardRefreshHz) {
+    sentences.push(`Your screen refreshes ${browser.refreshHz} times a second, faster than most.`)
+  }
+  if (browser.extendedDisplay) sentences.push('You have more than one screen connected.')
+  if (browser.taskbar) sentences.push(taskbarSentence(browser.taskbar))
+  if (browser.window) {
+    sentences.push(
+      browser.window.maximized
+        ? 'Your browser window fills the screen.'
+        : `Your browser window covers about ${browser.window.share}% of your screen.`,
     )
   }
-  if (browser.keyboard) story.push(`You type on a ${browser.keyboard} keyboard.`)
-  if (languages.length > 1) story.push(`You read ${list(languages)}.`)
-  for (const hint of fonts) story.push(fontHintSentences[hint])
-  if (browser.darkMode) story.push('You prefer dark mode.')
-  if (browser.adBlocker) story.push('You run an ad blocker.')
+  if (browser.battery && !batteryAmbiguous(browser.battery)) {
+    sentences.push(
+      `Your battery is at ${Math.round(browser.battery.level * 100)}% and ${browser.battery.charging ? 'charging' : 'not charging'}${batteryTime(browser.battery)}.`,
+    )
+  }
+  if (browser.keyboard) sentences.push(`You type on a ${browser.keyboard} keyboard.`)
+  return sentences
+}
+
+function habits(
+  server: ConnectionSignals,
+  browser: BrowserSignals,
+  scrolling: ScrollDevice | null,
+): string[] {
+  const sentences: string[] = []
+  if (browser.brave) sentences.push("You use Brave, even though it tells sites it's Chrome.")
+  const kinds = new Set(browser.extensions.map((extension) => extension.kind))
+  for (const kind of kinds) {
+    const names = browser.extensions.filter((e) => e.kind === kind).map((e) => e.name)
+    sentences.push(
+      `You ${kind === 'writing' || kind === 'reading' ? 'use' : 'have'} ${list(names)}${kind === 'writing' || kind === 'reading' ? '' : ' installed'}, ${extensionReasons[kind]}.`,
+    )
+  }
+  for (const hint of new Set(browser.fonts.map((font) => font.hint)))
+    sentences.push(fontHintSentences[hint])
+  const languages = uniqueLanguages(browser.languages)
+  if (languages.length > 1) sentences.push(`You read ${list(languages)}.`)
+  if (browser.darkMode) sentences.push('You prefer dark mode.')
+  if (browser.adBlocker) sentences.push('You run an ad blocker.')
   if (server.globalPrivacyControl)
-    story.push('Your browser asks sites not to sell or share your data.')
-  return story
+    sentences.push('Your browser asks sites not to sell or share your data.')
+  if (browser.historyLength > 1)
+    sentences.push(`This tab has been through ${browser.historyLength} pages so far.`)
+  if (scrolling) sentences.push(`You scroll with a ${scrolling}.`)
+  return sentences
 }
 
 export function connectionGroup(server: ConnectionSignals): Group {
@@ -73,7 +138,9 @@ export function connectionGroup(server: ConnectionSignals): Group {
     findings: [
       {
         label: 'IP address',
-        value: server.ip,
+        value: server.ip
+          ? `${server.ip}${server.ipVersion ? `, IPv${server.ipVersion}` : ''}`
+          : null,
         hide: 'A VPN or Tor replaces it with another address.',
       },
       {
@@ -91,6 +158,11 @@ export function connectionGroup(server: ConnectionSignals): Group {
         value:
           server.latitude && server.longitude ? `${server.latitude}, ${server.longitude}` : null,
         hide: 'Also from your IP address, usually accurate to the city.',
+      },
+      {
+        label: 'In the EU',
+        value: server.country ? (server.inEu ? 'Yes, GDPR applies' : 'No') : null,
+        hide: 'Also from your IP address.',
       },
       {
         label: 'Internet provider',
@@ -118,6 +190,16 @@ export function connectionGroup(server: ConnectionSignals): Group {
         hide: 'The same for everyone on your browser version, so it says little on its own.',
       },
       {
+        label: 'Request priority',
+        value: server.priority,
+        hide: 'Each browser engine prioritizes requests its own way, which can expose the real browser behind a faked user agent.',
+      },
+      {
+        label: 'Data saver',
+        value: server.saveData ? 'On' : 'Off',
+        hide: 'Sent as a header when you turn on data saving.',
+      },
+      {
         label: 'Languages you accept',
         value: server.languages.length > 0 ? server.languages.join(', ') : null,
         hide: 'Limit your browser to a single language.',
@@ -136,17 +218,34 @@ export function connectionGroup(server: ConnectionSignals): Group {
   }
 }
 
-export function browserGroup(server: ConnectionSignals, browser: BrowserSignals): Group {
+export function browserGroup(
+  server: ConnectionSignals,
+  browser: BrowserSignals,
+  scrolling: ScrollDevice | null,
+): Group {
   const os = browser.os ?? osFromUserAgent(server.userAgent)
   const mac = browser.model ? null : macModel(browser, os)
+  const browserName = browser.browser ?? browserFromUserAgent(server.userAgent)
   return {
     title: 'What your browser reveals',
     empty: 'Hidden by your browser',
     findings: [
       {
         label: 'Local time',
-        value: `${browser.time}, ${readableZone(browser.timezone)}, ${browser.hourCycle === 'h23' || browser.hourCycle === 'h24' ? '24-hour' : '12-hour'} clock`,
+        value: `${browser.time}, ${readableZone(browser.timezone)}, ${twentyFourHour(browser) ? '24-hour' : '12-hour'} clock`,
         hide: 'Tor Browser reports UTC. Otherwise, set your system timezone to match your VPN.',
+      },
+      {
+        label: 'System region',
+        value: browser.region ? (regions.of(browser.region) ?? browser.region) : null,
+        hide: 'Comes from your system language settings.',
+      },
+      {
+        label: 'Week starts on',
+        value: browser.weekStart
+          ? weekdays.format(firstMonday + (browser.weekStart - 1) * day)
+          : null,
+        hide: 'Comes from your system locale. Only Chromium-based browsers and Safari report it.',
       },
       {
         label: 'Operating system',
@@ -155,7 +254,7 @@ export function browserGroup(server: ConnectionSignals, browser: BrowserSignals)
       },
       {
         label: 'Browser',
-        value: browser.browser ?? browserFromUserAgent(server.userAgent),
+        value: browser.brave ? `Brave, identifying as ${browserName ?? 'Chrome'}` : browserName,
         hide: 'Sent with every request, so it is visible to every site.',
       },
       {
@@ -171,14 +270,47 @@ export function browserGroup(server: ConnectionSignals, browser: BrowserSignals)
         hide: 'Firefox and Safari report a generic name. Chromium-based browsers show the exact chip.',
       },
       {
+        label: 'Hardware video decoding',
+        value: browser.videoDecoding
+          ? browser.videoDecoding.length > 0
+            ? browser.videoDecoding.join(', ')
+            : 'None of the formats we checked'
+          : null,
+        hide: 'Shows which video formats your graphics hardware can decode.',
+      },
+      {
         label: 'Screen',
         value: `${browser.screen.width}×${browser.screen.height} at ${browser.screen.pixelRatio}x${browser.screen.wideGamut ? ', wide color' : ''}${browser.screen.hdr ? ', HDR' : ''}`,
         hide: 'Tor Browser and Firefox with fingerprinting resistance report standard sizes.',
       },
       {
+        label: 'Refresh rate',
+        value: browser.refreshHz ? `${browser.refreshHz} Hz` : null,
+        guess: true,
+        hide: 'Measured from animation timing. No browser hides it.',
+      },
+      {
         label: 'More than one screen',
         value: browser.extendedDisplay === null ? null : browser.extendedDisplay ? 'Yes' : 'No',
         hide: 'Only Chromium-based browsers report this.',
+      },
+      {
+        label: 'Taskbar or Dock',
+        value: browser.taskbar
+          ? browser.taskbar.side
+            ? `${capitalize(browser.taskbar.name)} on the ${browser.taskbar.side}, ${browser.taskbar.size} pixels`
+            : `${capitalize(browser.taskbar.name)} hidden`
+          : null,
+        hide: 'Read from the part of the screen windows may use. Firefox with fingerprinting resistance hides it.',
+      },
+      {
+        label: 'Browser window',
+        value: browser.window
+          ? browser.window.maximized
+            ? 'Fills the screen'
+            : `Covers about ${browser.window.share}% of the screen`
+          : null,
+        hide: 'Every browser reports the window size.',
       },
       {
         label: 'Processor and memory',
@@ -194,7 +326,7 @@ export function browserGroup(server: ConnectionSignals, browser: BrowserSignals)
         value: browser.battery
           ? batteryAmbiguous(browser.battery)
             ? '100%, charging, or no battery at all'
-            : `${Math.round(browser.battery.level * 100)}%, ${browser.battery.charging ? 'charging' : 'not charging'}`
+            : `${Math.round(browser.battery.level * 100)}%, ${browser.battery.charging ? 'charging' : 'not charging'}${batteryTime(browser.battery)}`
           : null,
         hide: 'Firefox and Safari do not expose battery status. Desktops without a battery report a full, charging one.',
       },
@@ -202,6 +334,21 @@ export function browserGroup(server: ConnectionSignals, browser: BrowserSignals)
         label: 'Keyboard layout',
         value: browser.keyboard,
         hide: 'Only Chromium-based browsers expose this.',
+      },
+      {
+        label: 'Pointing devices',
+        value:
+          join([
+            browser.pointers.fine ? 'mouse or trackpad' : null,
+            browser.pointers.coarse ? 'touchscreen' : null,
+          ]) ?? 'None reported',
+        hide: 'Reported by every browser.',
+      },
+      {
+        label: 'Scrolling',
+        value: scrolling ? capitalize(scrolling) : 'Scroll the page to find out',
+        guess: Boolean(scrolling),
+        hide: 'Scroll events reveal the device. Every browser shares them.',
       },
       {
         label: 'Disk size',
@@ -215,6 +362,14 @@ export function browserGroup(server: ConnectionSignals, browser: BrowserSignals)
           ? `${browser.connection.type}${browser.connection.downlinkMbps ? `, about ${browser.connection.downlinkMbps} Mbps` : ''}`
           : null,
         hide: 'Only Chromium-based browsers report this.',
+      },
+      {
+        label: 'Extensions we spotted',
+        value:
+          browser.extensions.length > 0
+            ? browser.extensions.map((extension) => extension.name).join(', ')
+            : 'None that leave traces',
+        hide: 'Extensions that add objects or markers to every page can be spotted by any site.',
       },
       {
         label: 'Installed fonts we found',
@@ -232,9 +387,21 @@ export function browserGroup(server: ConnectionSignals, browser: BrowserSignals)
         hide: 'Reveals installed language packs. Firefox with fingerprinting resistance hides them.',
       },
       {
+        label: 'Audio output',
+        value: browser.audio
+          ? `${browser.audio.channels} channels at ${browser.audio.sampleRateKhz} kHz`
+          : null,
+        hide: 'Reported by every browser that plays sound.',
+      },
+      {
         label: 'Touch',
         value: browser.touchPoints > 0 ? `${browser.touchPoints} touch points` : 'No touch screen',
         hide: 'Reported by every browser.',
+      },
+      {
+        label: 'Tab history',
+        value: `${browser.historyLength} ${browser.historyLength === 1 ? 'page' : 'pages'} in this tab`,
+        hide: 'Counts pages, not which ones. A new tab starts at one.',
       },
       {
         label: 'Ad blocker',
@@ -248,6 +415,19 @@ export function browserGroup(server: ConnectionSignals, browser: BrowserSignals)
       },
     ],
   }
+}
+
+function taskbarSentence(taskbar: NonNullable<BrowserSignals['taskbar']>): string {
+  if (!taskbar.side) return `You keep your ${taskbar.name} hidden.`
+  return `Your ${taskbar.name} sits on the ${taskbar.side} of the screen, ${taskbar.size} pixels ${taskbar.side === 'left' || taskbar.side === 'right' ? 'wide' : 'tall'}.`
+}
+
+function batteryTime(battery: NonNullable<BrowserSignals['battery']>): string {
+  if (battery.minutesLeft === null) return ''
+  const hours = Math.floor(battery.minutesLeft / 60)
+  const rest = battery.minutesLeft % 60
+  const span = hours > 0 ? `${hours} h ${rest} min` : `${rest} min`
+  return battery.charging ? `, full in about ${span}` : `, with about ${span} left`
 }
 
 function usesVpn(server: ConnectionSignals, browser: BrowserSignals): boolean {
@@ -338,6 +518,10 @@ function readableZone(zone: string): string {
 
 function storage(gb: number): string {
   return gb >= 1000 ? `${(gb / 1000).toFixed(1)} TB` : `${Math.round(gb)} GB`
+}
+
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
 function list(items: string[]): string {

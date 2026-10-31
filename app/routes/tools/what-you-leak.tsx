@@ -8,8 +8,10 @@ import { Section } from '~/components/section'
 import { connectionSignals } from '../../../server/leak.server'
 import {
   type BrowserSignals,
+  listenForScrolling,
   listenForVoices,
   readBrowser,
+  type ScrollDevice,
 } from '../../tools/what-you-leak/browser'
 import {
   browserGroup,
@@ -36,18 +38,21 @@ export function loader({ request }: Route.LoaderArgs) {
 
 export default function WhatYouLeak({ loaderData: { connection } }: Route.ComponentProps) {
   const [browser, setBrowser] = useState<BrowserSignals | null>(null)
+  const [scrolling, setScrolling] = useState<ScrollDevice | null>(null)
 
   useEffect(() => {
     let active = true
     readBrowser().then((signals) => {
       if (active) setBrowser(signals)
     })
-    const stop = listenForVoices((voices) =>
+    const stopVoices = listenForVoices((voices) =>
       setBrowser((current) => (current ? { ...current, voices } : current)),
     )
+    const stopScrolling = listenForScrolling(setScrolling)
     return () => {
       active = false
-      stop()
+      stopVoices()
+      stopScrolling()
     }
   }, [])
 
@@ -61,11 +66,17 @@ export default function WhatYouLeak({ loaderData: { connection } }: Route.Compon
       }
     >
       <section className="flex flex-col gap-4">
-        <p className="font-heading text-2xl leading-snug text-balance sm:text-3xl">
-          {browser
-            ? buildStory(connection, browser).join(' ')
-            : 'Reading what your browser gives away…'}
-        </p>
+        {browser ? (
+          buildStory(connection, browser, scrolling).map((paragraph) => (
+            <p key={paragraph} className="font-heading text-2xl leading-snug sm:text-3xl">
+              {paragraph}
+            </p>
+          ))
+        ) : (
+          <p className="font-heading text-2xl leading-snug sm:text-3xl">
+            Reading what your browser gives away…
+          </p>
+        )}
         <p className="text-sm text-muted-foreground">
           Nothing here is saved. Location and network come from this one request, and everything
           else is read by your browser and stays on your device.
@@ -73,7 +84,7 @@ export default function WhatYouLeak({ loaderData: { connection } }: Route.Compon
       </section>
       <Findings group={connectionGroup(connection)} />
       {browser ? (
-        <Findings group={browserGroup(connection, browser)} />
+        <Findings group={browserGroup(connection, browser, scrolling)} />
       ) : (
         <Section title="What your browser reveals">
           <p className="text-sm text-muted-foreground">Reading…</p>
