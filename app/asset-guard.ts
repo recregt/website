@@ -1,6 +1,13 @@
 import { createContext } from 'react'
 
-export const NonceContext = createContext<string | undefined>(undefined)
+// Browsers hide a nonce attribute once the page loads, but the property keeps it, so the
+// client can hydrate with the same nonce the server rendered.
+const renderedNonce =
+  typeof document === 'undefined'
+    ? undefined
+    : document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce || undefined
+
+export const NonceContext = createContext<string | undefined>(renderedNonce)
 
 function reloadOnAssetFailure() {
   const key = 'asset-reload'
