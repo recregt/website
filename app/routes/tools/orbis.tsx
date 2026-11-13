@@ -411,7 +411,7 @@ export default function Orbis() {
   )
 }
 
-const glass = 'rounded-lg border border-white/10 bg-black/55 text-white backdrop-blur-md'
+const glass = 'rounded-lg border border-white/10 bg-black/75 text-white'
 
 function Progress({
   steps,
