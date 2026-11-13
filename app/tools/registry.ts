@@ -7,4 +7,9 @@ export const tools: Tool[] = [
     summary:
       'What any website can tell about you from a single visit, read live from your own connection and browser.',
   },
+  {
+    slug: 'orbis',
+    title: 'Orbis',
+    summary: 'A planet simulated from first principles, live in your browser.',
+  },
 ]
