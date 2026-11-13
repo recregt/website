@@ -1,4 +1,5 @@
 import type { Climate, Relief, Shape } from './protocol'
+import { drawRivers, type River } from './rivers'
 
 export type View = 'surface' | 'temperature' | 'rain' | 'ipse'
 
@@ -49,16 +50,12 @@ const LAND_ICE: Rgb = [242, 246, 250]
 const BARREN: Rgb = [176, 152, 112]
 const GRASS: Rgb = [118, 146, 78]
 const FOREST: Rgb = [46, 84, 46]
-const RIVER: Rgb = [40, 96, 150]
 const BARE_HIGHLAND: Ramp = [
   [0, [120, 128, 92]],
   [1500, [146, 124, 92]],
   [4000, [170, 160, 150]],
   [7000, [235, 235, 235]],
 ]
-
-/** Discharge, in m³ per year, below which a river is not drawn. */
-const SMALLEST_RIVER = 2.5e10
 
 function mix(low: Rgb, high: Rgb, t: number): Rgb {
   return [
@@ -95,7 +92,6 @@ function coverColor(code: number): Rgb {
   }
 }
 
-/** Samples a cell field between cell centres; the planet wraps east–west. */
 export function sampler(width: number, height: number, values: Float32Array) {
   return (u: number, v: number) => {
     const x = u * width - 0.5
@@ -113,7 +109,6 @@ export function sampler(width: number, height: number, values: Float32Array) {
   }
 }
 
-/** Blends the colours of the four surrounding cells, so cover changes smoothly. */
 function coverSampler(width: number, height: number, cover: Float32Array) {
   return (u: number, v: number): { color: Rgb; seaIce: number; landIce: number } => {
     const x = u * width - 0.5
@@ -149,7 +144,18 @@ function coverSampler(width: number, height: number, cover: Float32Array) {
   }
 }
 
-export type Surface = { color: ImageData; roughness: ImageData }
+export function runoffSampler(climate: Climate) {
+  const { width, height, layers } = climate
+  const rain = sampler(width, height, layers.rain)
+  const evaporation = sampler(width, height, layers.evaporation)
+  const cover = coverSampler(width, height, layers.cover)
+  return (u: number, v: number) =>
+    (Math.max(rain(u, v) - evaporation(u, v), 0) / 1000) * (1 - cover(u, v).landIce)
+}
+
+export type Painted = { color: ImageData; roughness: ImageData }
+
+export type Surface = { color: HTMLCanvasElement; roughness: HTMLCanvasElement }
 
 export type Heights = { width: number; height: number; heights: Float32Array }
 
@@ -157,21 +163,11 @@ export function heightsOf(shape: Shape, relief: Relief | null): Heights {
   return relief ?? { width: shape.width, height: shape.height, heights: shape.elevation }
 }
 
-/**
- * Paints the planet's surface at the resolution of `ground`: cover, sea depth, ice and
- * rivers from the simulation, shaded by the relief, with an optional data overlay.
- */
-export function paint(
-  ground: Heights,
-  climate: Climate | null,
-  drainage: Float32Array | null,
-  view: View,
-): Surface {
+export function paint(ground: Heights, climate: Climate | null, view: View): Painted {
   const { width, height, heights } = ground
   const color = new ImageData(width, height)
   const roughness = new ImageData(width, height)
   const cover = climate && coverSampler(climate.width, climate.height, climate.layers.cover)
-  const rain = climate && sampler(climate.width, climate.height, climate.layers.rain)
   const overlay =
     climate && view !== 'surface'
       ? sampler(climate.width, climate.height, climate.layers[view])
@@ -203,16 +199,7 @@ export function paint(
           }
         }
       } else {
-        const here = cover?.(u, v)
-        rgb = here ? here.color : ramp(BARE_HIGHLAND, h)
-        if (drainage && rain && here && here.landIce < 0.5) {
-          const discharge = (drainage[i] ?? 0) * (rain(u, v) / 1000) * (1 - here.landIce)
-          if (discharge > SMALLEST_RIVER) {
-            const strength = Math.min(Math.log10(discharge / SMALLEST_RIVER) / 1.5 + 0.35, 0.9)
-            rgb = mix(rgb, RIVER, strength)
-            rough = 0.5
-          }
-        }
+        rgb = cover ? cover(u, v).color : ramp(BARE_HIGHLAND, h)
         rgb = [rgb[0] * shade, rgb[1] * shade, rgb[2] * shade]
       }
       if (overlay && stops && !(view === 'rain' && h < 0)) {
@@ -235,7 +222,33 @@ export function paint(
   return { color, roughness }
 }
 
-/** Paints the centre of one region tile from its own heights, coloured by the climate around it. */
+const LARGEST_TEXTURE = 4096
+
+export function compose(painted: Painted, rivers: River[], hidden: boolean): Surface {
+  const { width, height } = painted.color
+  const scale = Math.max(1, Math.min(2, Math.floor(LARGEST_TEXTURE / width)))
+  const layer = (image: ImageData, style: string) => {
+    const source = document.createElement('canvas')
+    source.width = width
+    source.height = height
+    source.getContext('2d')?.putImageData(image, 0, 0)
+    const canvas = document.createElement('canvas')
+    canvas.width = width * scale
+    canvas.height = height * scale
+    const context = canvas.getContext('2d')
+    if (context) {
+      context.imageSmoothingQuality = 'high'
+      context.drawImage(source, 0, 0, canvas.width, canvas.height)
+      if (!hidden) drawRivers(context, rivers, scale, width, style)
+    }
+    return canvas
+  }
+  return {
+    color: layer(painted.color, 'rgb(46 104 156)'),
+    roughness: layer(painted.roughness, 'rgb(110 110 110)'),
+  }
+}
+
 export function paintRegion(
   heights: Float32Array,
   cells: number,

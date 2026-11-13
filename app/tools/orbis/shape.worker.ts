@@ -12,7 +12,7 @@ const ready = init()
 let shape: Shape | undefined
 let queue: Promise<void> = Promise.resolve()
 
-function post(reply: ShapeReply, arrays: Float32Array[]) {
+function post(reply: ShapeReply, arrays: (Float32Array | Uint32Array)[]) {
   self.postMessage(reply, transfer(arrays))
 }
 
@@ -39,17 +39,17 @@ function build(request: Request) {
   )
   const started = performance.now()
   const heights = shape.relief()
-  const drainage = shape.drainageArea()
+  const receivers = shape.drainageReceivers()
   post(
     {
       kind: 'relief',
       width: shape.reliefWidth,
       height: shape.reliefHeight,
       heights,
-      drainage,
+      receivers,
       seconds: (performance.now() - started) / 1000,
     },
-    [heights, drainage],
+    [heights, receivers],
   )
 }
 

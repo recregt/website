@@ -42,7 +42,6 @@ export type Tile = {
   cells: number
   from: number
   to: number
-  /** Where a cell centre of the tile lies on the map, as texture coordinates. */
   uv: (cx: number, cy: number) => [number, number]
   image: ImageData
 }
@@ -74,7 +73,7 @@ function lifted(metres: number) {
 }
 
 const atmosphereShader = {
-  vertexShader: /* glsl */ `
+  vertexShader: `
     varying vec3 vNormal;
     varying vec3 vWorldNormal;
     void main() {
@@ -83,7 +82,7 @@ const atmosphereShader = {
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
-  fragmentShader: /* glsl */ `
+  fragmentShader: `
     uniform vec3 sunDirection;
     varying vec3 vNormal;
     varying vec3 vWorldNormal;
@@ -114,13 +113,11 @@ export function createGlobe(canvas: HTMLCanvasElement, onLook: (look: Look) => v
   scene.add(sun)
   const sunDirection = new Vector3(1, 0, 0)
 
-  const colorCanvas = document.createElement('canvas')
-  const roughCanvas = document.createElement('canvas')
-  const map = new CanvasTexture(colorCanvas)
+  const map = new CanvasTexture(document.createElement('canvas'))
   map.colorSpace = SRGBColorSpace
   map.wrapS = RepeatWrapping
   map.anisotropy = renderer.capabilities.getMaxAnisotropy()
-  const roughnessMap = new CanvasTexture(roughCanvas)
+  const roughnessMap = new CanvasTexture(document.createElement('canvas'))
   roughnessMap.wrapS = RepeatWrapping
   let displacement: DataTexture | undefined
   const material = new MeshStandardMaterial({ map, roughnessMap, roughness: 1, metalness: 0 })
@@ -209,14 +206,12 @@ export function createGlobe(canvas: HTMLCanvasElement, onLook: (look: Look) => v
 
   return {
     show({ color, roughness }, ground) {
-      for (const [canvasOf, image, texture] of [
-        [colorCanvas, color, map],
-        [roughCanvas, roughness, roughnessMap],
+      for (const [image, texture] of [
+        [color, map],
+        [roughness, roughnessMap],
       ] as const) {
-        canvasOf.width = image.width
-        canvasOf.height = image.height
-        canvasOf.getContext('2d')?.putImageData(image, 0, 0)
         texture.dispose()
+        texture.image = image
         texture.needsUpdate = true
       }
       const { width, height, heights } = ground

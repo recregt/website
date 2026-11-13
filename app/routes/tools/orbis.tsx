@@ -1,13 +1,26 @@
+import { Check, LoaderCircle, Shuffle } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { SiteHero } from '~/components/cover-hero'
 import { Page } from '~/components/page'
 import { PageHeader } from '~/components/page-header'
+import { Segmented } from '~/components/segmented'
+import { Button } from '~/components/ui/button'
+import { Input } from '~/components/ui/input'
 import { cn } from '~/lib/utils'
 
 import { currentField, type FlowKind, windField } from '../../tools/orbis/flow'
 import type { Globe, Look } from '../../tools/orbis/globe.client'
-import { heightsOf, paint, paintRegion, ramps, sampler, type View } from '../../tools/orbis/paint'
+import {
+  compose,
+  heightsOf,
+  paint,
+  paintRegion,
+  ramps,
+  runoffSampler,
+  sampler,
+  type View,
+} from '../../tools/orbis/paint'
 import type {
   Climate,
   Region,
@@ -17,6 +30,7 @@ import type {
   Shape,
   ShapeReply,
 } from '../../tools/orbis/protocol'
+import { traceRivers } from '../../tools/orbis/rivers'
 import type { Route } from './+types/orbis'
 
 export const meta: Route.MetaFunction = () => [
@@ -36,15 +50,15 @@ const views: { value: View; label: string }[] = [
 ]
 
 const flows: { value: FlowKind; label: string }[] = [
-  { value: 'none', label: 'No flow' },
-  { value: 'winds', label: 'Prevailing winds' },
+  { value: 'none', label: 'Off' },
+  { value: 'winds', label: 'Winds' },
   { value: 'currents', label: 'Currents' },
 ]
 
 const sizes = [
-  { value: '32x16', label: '32 × 16' },
-  { value: '64x32', label: '64 × 32' },
-  { value: '128x64', label: '128 × 64' },
+  { value: '32x16', label: 'Coarse' },
+  { value: '64x32', label: 'Medium' },
+  { value: '128x64', label: 'Fine' },
 ]
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -137,11 +151,19 @@ export default function Orbis() {
     return () => clearInterval(timer)
   }, [busy])
 
+  const rivers = useMemo(
+    () =>
+      shape && relief && climate
+        ? traceRivers(relief, shape.circumferenceMetres, runoffSampler(climate))
+        : [],
+    [shape, relief, climate],
+  )
+
   useEffect(() => {
     if (!ready || !shape) return
     const ground = heightsOf(shape, relief)
-    globe.current?.show(paint(ground, climate, relief?.drainage ?? null, view), ground)
-  }, [ready, shape, relief, climate, view])
+    globe.current?.show(compose(paint(ground, climate, view), rivers, view !== 'surface'), ground)
+  }, [ready, shape, relief, climate, view, rivers])
 
   useEffect(() => {
     if (!ready || !shape) return
@@ -245,13 +267,16 @@ export default function Orbis() {
     climateWorker.current = climatist
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: generate once the globe is ready
+  const start = useRef(generate)
+  start.current = generate
   useEffect(() => {
-    if (ready) generate()
+    if (ready) start.current()
   }, [ready])
 
   const legend = view === 'surface' ? null : ramps[view]
   const month = MONTHS[Math.min(Math.floor((day / 365) * 12), 11)]
+  const sunDegrees = (((((sunLongitude ?? 0) * 360 + 180) % 360) + 360) % 360) - 180
+  const pressed = useRef<{ x: number; y: number } | null>(null)
 
   return (
     <Page
@@ -264,102 +289,57 @@ export default function Orbis() {
         </SiteHero>
       }
     >
-      <section className="flex flex-col gap-4">
-        <form onSubmit={generate} className="flex flex-wrap items-end gap-3 text-sm">
-          <label className="flex flex-col gap-1">
-            <span className="text-muted-foreground">Seed</span>
-            <input
+      <section className="flex flex-col gap-3">
+        <form onSubmit={generate} className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center">
+            <Input
+              aria-label="Seed"
               value={seed}
               onChange={(event) => setSeed(event.target.value.replace(/\D/g, ''))}
               inputMode="numeric"
-              className="w-32 rounded-md border border-border bg-transparent px-2 py-1.5"
+              className="w-28 rounded-r-none tabular-nums"
             />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-muted-foreground">Grid</span>
-            <select
-              value={size}
-              onChange={(event) => setSize(event.target.value)}
-              className="rounded-md border border-border bg-transparent px-2 py-1.5"
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Random seed"
+              className="rounded-l-none border-l-0"
+              onClick={() => setSeed(String(Math.floor(Math.random() * 1_000_000)))}
             >
-              {sizes.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="submit"
-            disabled={!seed}
-            className="rounded-md border border-border px-3 py-1.5 transition-colors hover:text-ring"
-          >
-            Generate
-          </button>
-          <div className="ml-auto flex flex-col items-end text-muted-foreground tabular-nums">
-            <span>
-              Ground {shape ? 'ready' : '…'} · relief {seconds(reliefTiming, now)}
-              {relief ? '' : ' …'} · climate {seconds(climateTiming, now)}
-              {climate ? (climate.settled ? '' : ' (not settled)') : ' …'}
-            </span>
-            {regionCount > 0 && <span>{regionCount} detail tiles</span>}
+              <Shuffle />
+            </Button>
           </div>
+          <Segmented label="Grid" options={sizes} value={size} onChange={setSize} />
+          <Button type="submit" disabled={!seed}>
+            Generate
+          </Button>
         </form>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-          <Choice options={views} value={view} onChange={setView} />
-          <Choice options={flows} value={flow} onChange={setFlow} disabled={!climate} />
-        </div>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-          <label className="flex items-center gap-2">
-            <span className="w-28">
-              Day {day + 1} · {month}
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={364}
-              value={day}
-              onChange={(event) => setDay(Number(event.target.value))}
-              className="w-48"
-            />
-          </label>
-          <label className="flex items-center gap-2">
-            <span className="w-28">
-              Sun over {((((sunLongitude ?? 0) * 360 + 180) % 360) - 180).toFixed(0)}°
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.002}
-              value={sunLongitude ?? 0}
-              onChange={(event) => setSunLongitude(Number(event.target.value))}
-              className="w-48"
-            />
-          </label>
-          {legend && (
-            <span className="flex items-center gap-2">
-              <span
-                className="h-2 w-40 rounded-full"
-                style={{
-                  background: `linear-gradient(to right, ${legend.stops
-                    .map(([, [r, g, b]]) => `rgb(${r} ${g} ${b})`)
-                    .join(', ')})`,
-                }}
-              />
-              {legend.stops[0]?.[0]} … {legend.stops[legend.stops.length - 1]?.[0]} {legend.unit}
-              {view === 'rain' && ' · rain is kept per cell over land only'}
-            </span>
-          )}
-        </div>
-        <div className="relative">
+
+        <div className="relative overflow-hidden rounded-xl border border-border bg-black">
           <canvas
             ref={canvas}
-            onClick={(event) => {
-              const hit = globe.current?.pick(event.clientX, event.clientY)
-              setPicked(hit ?? null)
+            onPointerDown={(event) => {
+              pressed.current = { x: event.clientX, y: event.clientY }
             }}
-            className="aspect-square w-full cursor-grab touch-none rounded-lg bg-black active:cursor-grabbing sm:aspect-[16/10]"
+            onClick={(event) => {
+              const from = pressed.current
+              if (from && Math.hypot(event.clientX - from.x, event.clientY - from.y) > 4) return
+              setPicked(globe.current?.pick(event.clientX, event.clientY) ?? null)
+            }}
+            className="block aspect-square w-full cursor-grab touch-none active:cursor-grabbing sm:aspect-[16/10]"
+          />
+          <Progress
+            steps={[
+              { label: 'Ground', done: !!shape },
+              { label: 'Relief', done: !!relief, time: seconds(reliefTiming, now) },
+              {
+                label: climate && !climate.settled ? 'Climate (unsettled)' : 'Climate',
+                done: !!climate,
+                time: seconds(climateTiming, now),
+              },
+            ]}
+            tiles={regionCount}
           />
           {picked && shape && (
             <Inspector
@@ -370,48 +350,132 @@ export default function Orbis() {
               onClose={() => setPicked(null)}
             />
           )}
+          <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap items-end justify-between gap-2">
+            <div className="pointer-events-auto flex flex-col items-start gap-2">
+              {legend && (
+                <div className={cn(glass, 'flex items-center gap-2 px-2.5 py-1.5 text-xs')}>
+                  <span className="tabular-nums">{legend.stops[0]?.[0]}</span>
+                  <span
+                    className="h-1.5 w-32 rounded-full"
+                    style={{
+                      background: `linear-gradient(to right, ${legend.stops
+                        .map(([, [r, g, b]]) => `rgb(${r} ${g} ${b})`)
+                        .join(', ')})`,
+                    }}
+                  />
+                  <span className="tabular-nums">
+                    {legend.stops[legend.stops.length - 1]?.[0]} {legend.unit}
+                  </span>
+                  {view === 'rain' && <span className="text-white/60">land only</span>}
+                </div>
+              )}
+              <Segmented label="Layer" options={views} value={view} onChange={setView} />
+            </div>
+            <div className="pointer-events-auto">
+              {climate ? (
+                <Segmented label="Flow" options={flows} value={flow} onChange={setFlow} />
+              ) : (
+                <span className={cn(glass, 'px-2.5 py-1.5 text-xs text-white/70')}>
+                  Flows appear once the climate settles
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-x-8 gap-y-3 rounded-xl border border-border px-4 py-3 text-sm sm:grid-cols-2">
+          <Slider
+            label="Season"
+            value={`${month} · day ${day + 1}`}
+            min={0}
+            max={364}
+            step={1}
+            current={day}
+            onChange={setDay}
+          />
+          <Slider
+            label="Sun overhead"
+            value={`${Math.abs(sunDegrees).toFixed(0)}° ${sunDegrees >= 0 ? 'E' : 'W'}`}
+            min={0}
+            max={1}
+            step={0.002}
+            current={sunLongitude ?? 0}
+            onChange={setSunLongitude}
+          />
         </div>
         <p className="text-sm text-muted-foreground">
-          Drag to turn the planet, scroll to zoom. Winds show the prevailing direction of the
-          circulation belts; currents follow the wind-driven gyres. Zoom in close and Orbis carves
-          detailed terrain for the area you look at. Click anywhere to read what the simulation
-          computed there.
+          Drag to turn the planet and scroll to zoom; close up, Orbis carves detailed terrain for
+          the area in view. Click anywhere to read what the simulation computed there. Winds show
+          the prevailing direction of the circulation belts, and currents follow the wind-driven
+          gyres.
         </p>
       </section>
     </Page>
   )
 }
 
-function Choice<T extends string>({
-  options,
-  value,
-  onChange,
-  disabled = false,
+const glass = 'rounded-lg border border-white/10 bg-black/55 text-white backdrop-blur-md'
+
+function Progress({
+  steps,
+  tiles,
 }: {
-  options: { value: T; label: string }[]
-  value: T
-  onChange: (value: T) => void
-  disabled?: boolean
+  steps: { label: string; done: boolean; time?: string }[]
+  tiles: number
 }) {
   return (
-    <div className="flex flex-wrap gap-1">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          disabled={disabled && option.value !== value}
-          onClick={() => onChange(option.value)}
-          className={cn(
-            'rounded-md px-3 py-1.5 transition-colors disabled:opacity-40',
-            value === option.value
-              ? 'bg-foreground text-background'
-              : 'text-muted-foreground hover:text-foreground',
+    <div className={cn(glass, 'absolute top-3 left-3 flex flex-col gap-1 px-3 py-2 text-xs')}>
+      {steps.map((step) => (
+        <div key={step.label} className="flex items-center gap-2">
+          {step.done ? (
+            <Check className="size-3.5 text-emerald-400" />
+          ) : (
+            <LoaderCircle className="size-3.5 animate-spin text-white/60" />
           )}
-        >
-          {option.label}
-        </button>
+          <span className={step.done ? '' : 'text-white/70'}>{step.label}</span>
+          {step.time && (
+            <span className="ml-auto pl-3 text-white/50 tabular-nums">{step.time}</span>
+          )}
+        </div>
       ))}
+      {tiles > 0 && <div className="text-white/50">{tiles} detail tiles</div>}
     </div>
+  )
+}
+
+function Slider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  current,
+  onChange,
+}: {
+  label: string
+  value: string
+  min: number
+  max: number
+  step: number
+  current: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="flex justify-between">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="tabular-nums">{value}</span>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={current}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="w-full accent-foreground"
+      />
+    </label>
   )
 }
 
@@ -474,7 +538,7 @@ function Inspector({
   }, [picked, shape, relief, climate])
 
   return (
-    <div className="absolute top-3 right-3 w-64 rounded-lg border border-border bg-background/90 p-3 text-sm backdrop-blur">
+    <div className={cn(glass, 'absolute top-3 right-3 w-72 max-w-[calc(100%-1.5rem)] p-3 text-sm')}>
       <div className="mb-2 flex items-center justify-between">
         <span className="font-medium">Here</span>
         <button
@@ -488,8 +552,8 @@ function Inspector({
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
         {rows.map(([label, value]) => (
           <div key={label} className="contents">
-            <dt className="text-muted-foreground">{label}</dt>
-            <dd className="text-right tabular-nums">{value}</dd>
+            <dt className="text-white/60">{label}</dt>
+            <dd className="text-right whitespace-nowrap tabular-nums">{value}</dd>
           </div>
         ))}
       </dl>

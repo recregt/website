@@ -1,7 +1,5 @@
 import { createContext } from 'react'
 
-// Browsers hide a nonce attribute once the page loads, but the property keeps it, so the
-// client can hydrate with the same nonce the server rendered.
 const renderedNonce =
   typeof document === 'undefined'
     ? undefined

@@ -1,6 +1,5 @@
 import type { Climate, Shape } from './protocol'
 
-/** A direction field over the globe: `[east, north]`, or null where nothing flows. */
 export type Field = (u: number, v: number) => [number, number] | null
 
 export type FlowKind = 'none' | 'winds' | 'currents'
@@ -19,7 +18,6 @@ export function windField(climate: Climate): Field {
   }
 }
 
-/** Gyre currents from the streamfunction ψ: u = −∂ψ/∂y, v = ∂ψ/∂x, row 0 north. */
 export function currentField(climate: Climate, shape: Shape): Field {
   const { width, height } = climate
   const psi = climate.layers.gyre
@@ -54,7 +52,6 @@ export function currentField(climate: Climate, shape: Shape): Field {
   }
 }
 
-/** Particles that drift along a field and leave fading trails. */
 export class Particles {
   readonly positions: Float32Array
   readonly colors: Float32Array

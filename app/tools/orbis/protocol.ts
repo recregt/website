@@ -18,7 +18,7 @@ export type ShapeReply =
       width: number
       height: number
       heights: Float32Array
-      drainage: Float32Array
+      receivers: Uint32Array
       seconds: number
     }
   | { kind: 'region'; i: number; j: number; heights: Float32Array; seconds: number }
@@ -44,6 +44,6 @@ export type Region = Extract<ShapeReply, { kind: 'region' }>
 
 export const DECLINATION_SAMPLES = 365
 
-export function transfer(arrays: Float32Array[]) {
+export function transfer(arrays: (Float32Array | Uint32Array)[]) {
   return { transfer: arrays.map((array) => array.buffer as ArrayBuffer) }
 }
