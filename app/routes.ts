@@ -10,6 +10,7 @@ export default [
     index('routes/tools/index.tsx'),
     route('what-you-leak', 'routes/tools/what-you-leak.tsx'),
     route('what-you-leak/tag', 'routes/tools/what-you-leak.tag.ts'),
+    route('orbis', 'routes/tools/orbis.tsx'),
   ]),
   ...prefix('blog', [index('routes/blog/index.tsx'), route(':slug', 'routes/blog/post.tsx')]),
   route('signin', 'routes/signin.tsx'),

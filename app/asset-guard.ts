@@ -1,6 +1,11 @@
 import { createContext } from 'react'
 
-export const NonceContext = createContext<string | undefined>(undefined)
+const renderedNonce =
+  typeof document === 'undefined'
+    ? undefined
+    : document.querySelector<HTMLScriptElement>('script[nonce]')?.nonce || undefined
+
+export const NonceContext = createContext<string | undefined>(renderedNonce)
 
 function reloadOnAssetFailure() {
   const key = 'asset-reload'

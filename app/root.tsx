@@ -61,14 +61,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {assetGuard}
         </script>
         <Meta />
-        <Links />
+        <Links nonce={nonce} />
       </head>
       <body className="flex min-h-dvh flex-col">
         <SiteHeader user={user} />
         {children}
         <SiteFooter />
-        <ScrollRestoration />
-        <Scripts />
+        <ScrollRestoration nonce={nonce} />
+        <Scripts nonce={nonce} />
       </body>
     </html>
   )
