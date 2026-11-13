@@ -21,7 +21,7 @@
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@fontsource-variable/newsreader": "^5.3.0",
     "@portabletext/react": "^8.0.1",
-    "@recregt/orbis": "link:../orbis/wasm",
+    "@recregt/orbis": "^0.1.0",
     "@sanity/client": "^8.11.0",
     "@sanity/image-url": "^2.1.1",
     "class-variance-authority": "^0.7.1",

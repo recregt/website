@@ -179,8 +179,8 @@ importers:
         specifier: ^8.0.1
         version: 8.0.1(react@19.3.1)
       '@recregt/orbis':
-        specifier: link:../orbis/wasm
-        version: link:../orbis/wasm
+        specifier: ^0.1.0
+        version: 0.1.0
       '@sanity/client':
         specifier: ^8.11.0
         version: 8.11.0
@@ -3098,6 +3098,9 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  '@recregt/orbis@0.1.0':
+    resolution: {integrity: sha512-nvwm5yeeusSPNvwbCSgLUQAhlorQ/fiwCK0Vpiy1sp9e7YNYSURGFXhcneorvc3mXpJ8V3gbDG9K/HFJ7tnpaQ==}
 
   '@remix-run/node-fetch-server@0.14.2':
     resolution: {integrity: sha512-1cpM/f5i1ka/9CUMBwZXZp7Bn92x8VQjzg+F4eEe88DlVdNHkAKrf/vvbZoYgdkfy2bWHtGC6LQGLmojEqOF4Q==}
@@ -10039,6 +10042,8 @@ snapshots:
       react-router: 8.5.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
     optionalDependencies:
       typescript: 7.0.2
+
+  '@recregt/orbis@0.1.0': {}
 
   '@remix-run/node-fetch-server@0.14.2': {}
 

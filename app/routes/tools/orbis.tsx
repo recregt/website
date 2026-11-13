@@ -31,6 +31,7 @@ import type {
   ShapeReply,
 } from '../../tools/orbis/protocol'
 import { traceRivers } from '../../tools/orbis/rivers'
+import { startClimateWorker, startShapeWorker } from '../../tools/orbis/workers.client'
 import type { Route } from './+types/orbis'
 
 export const meta: Route.MetaFunction = () => [
@@ -238,9 +239,7 @@ export default function Orbis() {
     setReliefTiming({ since: started })
     setClimateTiming({ since: started })
 
-    const shaper = new Worker(new URL('../../tools/orbis/shape.worker.ts', import.meta.url), {
-      type: 'module',
-    })
+    const shaper = startShapeWorker()
     shaper.onmessage = ({ data }: MessageEvent<ShapeReply>) => {
       if (data.kind === 'shape') setShape(data)
       else if (data.kind === 'relief') {
@@ -256,9 +255,7 @@ export default function Orbis() {
     shaper.postMessage(request)
     shapeWorker.current = shaper
 
-    const climatist = new Worker(new URL('../../tools/orbis/climate.worker.ts', import.meta.url), {
-      type: 'module',
-    })
+    const climatist = startClimateWorker()
     climatist.onmessage = ({ data }: MessageEvent<Climate>) => {
       setClimate(data)
       setClimateTiming({ since: started, seconds: data.seconds })
